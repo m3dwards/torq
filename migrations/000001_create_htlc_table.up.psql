@@ -1,0 +1,10 @@
+
+CREATE TABLE IF NOT EXISTS htlc (
+   time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+   outgoing_channel_id NUMERIC,
+   incoming_channel_id NUMERIC,
+   event jsonb NOT NULL
+);
+
+-- Step 2: Turn into hypertable
+SELECT create_hypertable('htlc','time');
