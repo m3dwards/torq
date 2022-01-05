@@ -17,7 +17,6 @@ cover.out
 
 ## Ignore builds
 ./torq
-torq
 
 ## Ignore config file
 torq.conf
