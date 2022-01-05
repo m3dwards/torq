@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/jmoiron/sqlx v1.3.4
+	github.com/lib/pq v1.10.3
 	github.com/lightningnetwork/lnd v0.14.1-beta
 	github.com/urfave/cli/v2 v2.3.0
 	google.golang.org/grpc v1.41.0
@@ -12,6 +13,7 @@ require (
 )
 
 require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
@@ -65,7 +67,6 @@ require (
 	github.com/kkdai/bstream v1.0.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
-	github.com/lib/pq v1.10.3 // indirect
 	github.com/lightninglabs/gozmq v0.0.0-20191113021534-d20a764486bf // indirect
 	github.com/lightninglabs/neutrino v0.13.0 // indirect
 	github.com/lightningnetwork/lightning-onion v1.0.2-0.20210520211913-522b799e65b1 // indirect

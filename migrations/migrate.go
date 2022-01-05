@@ -34,11 +34,14 @@ func newMigrationInstance() (*migrate.Migrate, error) {
 // MigrateUp migrates up to the latest migration version. It should be used when the version number changes.
 func MigrateUp() error {
 	m, err := newMigrationInstance()
+	if err != nil {
+		return err
+	}
 	defer m.Close()
 
 	err = m.Up()
 	if err != nil {
-		return fmt.Errorf("migration error: %v", err)
+		return err
 	}
 
 	return nil
@@ -48,13 +51,13 @@ func MigrateUp() error {
 func MigrateDown() error {
 	m, err := newMigrationInstance()
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return err
 	}
 	defer m.Close()
 
-	err = m.Migrate(-1)
+	err = m.Steps(-1)
 	if err != nil {
-		return fmt.Errorf("Could not complete migrations: %v", err)
+		return err
 	}
 
 	return nil

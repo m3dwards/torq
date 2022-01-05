@@ -15,7 +15,7 @@ func storeHTLCEvent(db *sqlx.DB, h *routerrpc.HtlcEvent) error {
 
 	jb, err := json.Marshal(h)
 	if err != nil {
-		return fmt.Errorf("internal/lnd/htlc -> storeHTLCEvent -> json.Marshal(%v): %v", h, err)
+		return fmt.Errorf("storeHTLCEvent -> json.Marshal(%v): %v", h, err)
 	}
 
 	stm := `INSERT INTO htlc (time, outgoing_channel_id, incoming_channel_id, event) VALUES($1)`
@@ -23,25 +23,26 @@ func storeHTLCEvent(db *sqlx.DB, h *routerrpc.HtlcEvent) error {
 	timestampMs := h.TimestampNs / 1000.0
 	_, err = db.Exec(stm, timestampMs, h.OutgoingChannelId, h.IncomingChannelId, jb)
 	if err != nil {
-		return fmt.Errorf(`lndutil/htlcevents -> storeHTLCEvent -> db.Exec(%s, %v): %v`, stm, h, err)
+		return fmt.Errorf(`storeHTLCEvent -> db.Exec(%s, %v, %v, %v, %v): %v`,
+			stm, timestampMs, h.OutgoingChannelId, h.IncomingChannelId, jb, err)
 	}
 
 	return nil
 }
 
-// StreamHTLC subscribes to HTLC events from LND and stores them in the database as time series.
+// SubscribeAndStoreHtlcEvents subscribes to HTLC events from LND and stores them in the database as time series.
 // NB: LND has marked HTLC event streaming as experimental. Delivery is not guaranteed, so dataset might not be complete
 // HTLC events is primarily used to diagnose how good a channel / node is. And if the channel allocation should change.
-func StreamHTLC(router routerrpc.RouterClient, db *sqlx.DB) error {
+func SubscribeAndStoreHtlcEvents(router routerrpc.RouterClient, db *sqlx.DB) error {
 
 	ctx := context.Background()
 	htlcStream, err := router.SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
 	if err != nil {
-		return fmt.Errorf("internal/lnd/htlc.go StreamHTLC => could not subscribe: %v", err)
+		return fmt.Errorf("SubscribeAndStoreHtlcEvents -> SubscribeHtlcEvents(): %v", err)
 	}
 
 	if err != nil {
-		return fmt.Errorf("internal/lnd/htlc.go StreamHTLC => createChanIdMap(client) could not fetch channels: %v", err)
+		return fmt.Errorf("SubscribeAndStoreHtlcEvents -> createChanIdMap(client): %v", err)
 	}
 
 	for {
