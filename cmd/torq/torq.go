@@ -111,7 +111,7 @@ func main() {
 			// Check if the database needs to be migrated.
 			err := migrations.MigrateUp()
 			if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-				return fmt.Errorf("%", err)
+				return err
 			}
 
 			conn, err := lndutil.ConnectLnd(
@@ -131,31 +131,35 @@ func main() {
 			// Start the server
 			fmt.Printf("Starting Torq v%s\n", build.Version())
 
-			server.Start(conn, db)
+			err = server.Start(conn, db)
+			if err != nil {
+				return err
+			}
 
 			return nil
 		},
 	}
 
-	migrate := &cli.Command{
-		Name:  "migrate",
+	migrateUp := &cli.Command{
+		Name:  "migrate_up",
 		Usage: "Migrates the database to the latest version",
 		Action: func(c *cli.Context) error {
 			err := migrations.MigrateUp()
 			if err != nil {
-				return fmt.Errorf("%v", err)
+				return err
 			}
+
 			return nil
 		},
 	}
 
 	migrateDown := &cli.Command{
-		Name:  "migratedown",
+		Name:  "migrate_down",
 		Usage: "Migrates the database down one step",
 		Action: func(c *cli.Context) error {
 			err := migrations.MigrateDown()
 			if err != nil {
-				return fmt.Errorf("%v", err)
+				return err
 			}
 			return nil
 		},
@@ -167,7 +171,7 @@ func main() {
 
 	app.Commands = cli.Commands{
 		start,
-		migrate,
+		migrateUp,
 		migrateDown,
 	}
 
