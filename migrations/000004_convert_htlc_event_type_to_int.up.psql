@@ -1,0 +1,5 @@
+ALTER TABLE channel_event
+ALTER COLUMN event_type TYPE int2 USING (event_type::int2);
+
+ALTER TABLE htlc_event
+ALTER COLUMN event_type TYPE int2 USING (event_type::int2);
