@@ -40,8 +40,20 @@ func MigrateUp() error {
 	defer m.Close()
 
 	err = m.Up()
-	if err != nil {
+	dirtyErr, ok := err.(migrate.ErrDirty)
+	// If the Error did not originate from a dirty state, return the error directly.
+	if err != nil && err != migrate.ErrNoChange && err != migrate.ErrNilVersion && err != migrate.ErrLocked && !ok {
 		return err
+	}
+
+	// If the error is due to dirty state. Roll back and try again.
+	if ok {
+		fmt.Printf("Migration is dirty, forcing rollback and retrying")
+		m.Force(dirtyErr.Version - 1)
+		err = m.Up()
+		if err != nil && err != migrate.ErrNoChange && err != migrate.ErrNilVersion && err != migrate.ErrLocked {
+			return err
+		}
 	}
 
 	return nil
