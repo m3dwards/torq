@@ -20,7 +20,7 @@ func storeHTLCEvent(db *sqlx.DB, h *routerrpc.HtlcEvent) error {
 	}
 
 	stm := `INSERT INTO htlc_event (time, event_type, outgoing_channel_id, incoming_channel_id, 
-event) VALUES($1, $2, $3, $4, $5)`
+		event) VALUES($1, $2, $3, $4, $5)`
 
 	timestampMs := time.Unix(0, int64(h.TimestampNs)).Round(time.Microsecond)
 	_, err = db.Exec(stm, timestampMs, h.EventType, h.OutgoingChannelId, h.IncomingChannelId, jb)

@@ -25,7 +25,7 @@ func newMigrationInstance() (*migrate.Migrate, error) {
 		sourceInstance,
 		"postgres://torq:password@localhost:5432/torq?sslmode=disable")
 	if err != nil {
-		return nil, fmt.Errorf("Could not create migration instance: %v", err)
+		return nil, fmt.Errorf("could not create migration instance: %v", err)
 	}
 
 	return m, nil
@@ -37,7 +37,12 @@ func MigrateUp() error {
 	if err != nil {
 		return err
 	}
-	defer m.Close()
+	defer func() {
+		cerr, _ := m.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	err = m.Up()
 	dirtyErr, ok := err.(migrate.ErrDirty)
@@ -49,7 +54,10 @@ func MigrateUp() error {
 	// If the error is due to dirty state. Roll back and try again.
 	if ok {
 		fmt.Printf("Migration is dirty, forcing rollback and retrying")
-		m.Force(dirtyErr.Version - 1)
+		err = m.Force(dirtyErr.Version - 1)
+		if err != nil {
+			return err
+		}
 		err = m.Up()
 		if err != nil && err != migrate.ErrNoChange && err != migrate.ErrNilVersion && err != migrate.ErrLocked {
 			return err
@@ -65,7 +73,12 @@ func MigrateDown() error {
 	if err != nil {
 		return err
 	}
-	defer m.Close()
+	defer func() {
+		cerr, _ := m.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	err = m.Steps(-1)
 	if err != nil {
