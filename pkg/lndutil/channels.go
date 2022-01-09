@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-func makeTimestamp() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
-}
-
 // storeChannelEvent extracts the timestamp, channel ID and PubKey from the
 // ChannelEvent and converts the original struct to json.
 // Then it's stored in the database in the channel_event table.
@@ -24,7 +20,7 @@ func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate) error {
 		return fmt.Errorf("storeChannelEvent -> json.Marshal(%v): %v", ce, err)
 	}
 
-	timestampMs := makeTimestamp
+	timestampMs := time.Now()
 
 	var ChanID uint64
 	var ChannelPoint string
@@ -58,7 +54,8 @@ func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate) error {
 		//  Simply storing the event without any link to a channel.
 	}
 
-	stm := `INSERT INTO channel_event (time, type, chan_id, chan_point, pub_key, event) VALUES($1)`
+	stm := `INSERT INTO channel_event (time, event_type, chan_id, chan_point, pub_key, 
+event) VALUES($1, $2, $3, $4, $5, $6)`
 
 	_, err = db.Exec(stm, timestampMs, ce.Type.String(), ChanID, ChannelPoint, PubKey, jb)
 	if err != nil {
