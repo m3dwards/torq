@@ -17,6 +17,8 @@ cover.out
 
 ## Ignore builds
 ./torq
+torq
+!/cmd/torq
 
 ## Ignore config file
 torq.conf
@@ -27,3 +29,4 @@ torq-d*.conf
 
 ## Ignore all certificate files
 *.pem
+
