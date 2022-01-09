@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lncapital/torq/pkg/lndutil"
 	"google.golang.org/grpc"
@@ -15,10 +16,16 @@ import (
 func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 
 	router := routerrpc.NewRouterClient(conn)
+	client := lnrpc.NewLightningClient(conn)
 
 	err := lndutil.SubscribeAndStoreHtlcEvents(router, db)
 	if err != nil {
-		return fmt.Errorf("SubscribeAndStore -> SubscribeAndStoreHtlcEvents(): %v", err)
+		return fmt.Errorf("in Start -> SubscribeAndStoreHtlcEvents(): %v", err)
+	}
+
+	err = lndutil.SubscribeAndStoreChannelEvents(client, db)
+	if err != nil {
+		return fmt.Errorf("in Start -> SubscribeAndStoreChannelEvents(): %v", err)
 	}
 
 	return nil
