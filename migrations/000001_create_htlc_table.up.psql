@@ -1,5 +1,5 @@
 
-CREATE TABLE IF NOT EXISTS htlc (
+CREATE TABLE IF NOT EXISTS htlc_event (
    time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
    outgoing_channel_id NUMERIC,
    incoming_channel_id NUMERIC,
@@ -7,4 +7,4 @@ CREATE TABLE IF NOT EXISTS htlc (
 );
 
 -- Step 2: Turn into hypertable
-SELECT create_hypertable('htlc','time');
+SELECT create_hypertable('htlc_event','time');

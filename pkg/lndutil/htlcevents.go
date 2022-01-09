@@ -18,7 +18,7 @@ func storeHTLCEvent(db *sqlx.DB, h *routerrpc.HtlcEvent) error {
 		return fmt.Errorf("storeHTLCEvent -> json.Marshal(%v): %v", h, err)
 	}
 
-	stm := `INSERT INTO htlc (time, outgoing_channel_id, incoming_channel_id, event) VALUES($1)`
+	stm := `INSERT INTO htlc_event (time, outgoing_channel_id, incoming_channel_id, event) VALUES($1)`
 
 	timestampMs := h.TimestampNs / 1000.0
 	_, err = db.Exec(stm, timestampMs, h.OutgoingChannelId, h.IncomingChannelId, jb)
@@ -39,10 +39,6 @@ func SubscribeAndStoreHtlcEvents(router routerrpc.RouterClient, db *sqlx.DB) err
 	htlcStream, err := router.SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
 	if err != nil {
 		return fmt.Errorf("SubscribeAndStoreHtlcEvents -> SubscribeHtlcEvents(): %v", err)
-	}
-
-	if err != nil {
-		return fmt.Errorf("SubscribeAndStoreHtlcEvents -> createChanIdMap(client): %v", err)
 	}
 
 	for {

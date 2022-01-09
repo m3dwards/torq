@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS htlc;
+DROP TABLE IF EXISTS htlc_event;
