@@ -1,0 +1,14 @@
+ALTER TABLE htlc_event
+DROP COLUMN event_type;
+
+ALTER TABLE channel_event
+ALTER COLUMN event_type TYPE VARCHAR(22);
+
+ALTER TABLE channel_event
+ALTER COLUMN event_type DROP NOT NULL;
+
+ALTER TABLE channel_event
+RENAME COLUMN event_type to type;
+
+
+

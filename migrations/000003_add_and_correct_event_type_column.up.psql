@@ -1,0 +1,10 @@
+ALTER TABLE htlc_event
+ADD COLUMN event_type TEXT NOT NULL;
+
+ALTER TABLE channel_event
+RENAME COLUMN type to event_type;
+
+ALTER TABLE channel_event
+ALTER COLUMN event_type SET NOT NULL;
+
+ALTER TABLE channel_event ALTER COLUMN event_type TYPE TEXT;
