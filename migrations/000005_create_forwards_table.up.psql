@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS forward (
+   time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+   time_ns NUMERIC,
+   outgoing_channel_id NUMERIC,
+   incoming_channel_id NUMERIC,
+   outgoing_amount_msat NUMERIC,
+   incoming_amount_msat NUMERIC,
+   fee_msat NUMERIC
+);
+
+-- Turn into hypertable
+SELECT create_hypertable('forward','time');
