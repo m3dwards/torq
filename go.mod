@@ -8,6 +8,7 @@ require (
 	github.com/lib/pq v1.10.3
 	github.com/lightningnetwork/lnd v0.14.1-beta
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.41.0
 	gopkg.in/macaroon.v2 v2.0.0
 )
