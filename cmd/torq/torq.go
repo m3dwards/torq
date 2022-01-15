@@ -128,9 +128,17 @@ func main() {
 				return fmt.Errorf("(cmd/lnc streamHtlcCommand) error connecting to db: %v", err)
 			}
 
-			// Start the server
+			defer func() {
+				cerr := db.Close()
+				if err == nil {
+					err = cerr
+				}
+			}()
+
+			// Print startup message
 			fmt.Printf("Starting Torq v%s\n", build.Version())
 
+			// Start the server
 			err = server.Start(conn, db)
 			if err != nil {
 				return err
