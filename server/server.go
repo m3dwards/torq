@@ -43,15 +43,15 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	})
 
 	// Forwarding history
-	//errs.Go(func() error {
-	//
-	//	err := lndutil.SubscribeForwardingUpdates(client, db)
-	//	if err != nil {
-	//		return fmt.Errorf("in Start -> FetchForwardingHistory(): %v", err)
-	//	}
-	//
-	//	return nil
-	//})
+	errs.Go(func() error {
+
+		err := lndutil.SubscribeForwardingEvents(client, db)
+		if err != nil {
+			return fmt.Errorf("in Start -> SubscribeForwardingEvents(): %v", err)
+		}
+
+		return nil
+	})
 
 	return errs.Wait()
 }
