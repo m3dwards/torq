@@ -2,43 +2,76 @@ package lndutil
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"time"
 )
 
+type dbForwardEvent struct {
+
+	// The microseconds' version of TimestampNs, used by TimescaleDB
+	Time time.Time `db:"time"`
+
+	// The number of nanoseconds elapsed since January 1, 1970 UTC when this
+	// circuit was completed.
+	TimeNs uint64 `db:"time_ns"`
+
+	// The incoming channel ID that carried the HTLC that created the circuit.
+	ChanIdIn uint64 `db:"incoming_channel_id"`
+
+	// The outgoing channel ID that carried the preimage that completed the
+	// circuit.
+	ChanIdOut uint64 `db:"outgoing_channel_id"`
+
+	// The total fee (in milli-satoshis) that this payment circuit carried.
+	FeeMsat uint64 `db:"fee_msat"`
+
+	// The total amount (in milli-satoshis) of the incoming HTLC that created
+	// half the circuit.
+	AmtInMsat uint64 `db:"incoming_amount_msat"`
+
+	// The total amount (in milli-satoshis) of the outgoing HTLC that created
+	// the second half of the circuit.
+	AmtOutMsat uint64 `db:"outgoing_amount_msat"`
+}
+
 // storeForwardingHistory
-//func storeForwardingHistory(db *sqlx.DB, fwh []*lnrpc.ForwardingEvent) error {
-//
-//	if len(fwh) > 0 {
-//		tx := db.MustBegin()
-//		sql := "INSERT INTO forwards(time, ) VALUES (:id, " +
-//			":company_id, :mobileuser_id)"
-//		if _, err := tx.NamedExec(sql); err != nil {
-//			fmt.Printf("Failed updating sales transactions for mobileuser %s \n", m.ID)
-//			log.Println(err)
-//		}
-//		tx.Commit()
-//	}
-//
-//	jb, err := json.Marshal(h)
-//	if err != nil {
-//		return fmt.Errorf("storeForwardingHistory -> json.Marshal(%v): %v", h, err)
-//	}
-//
-//	stm := `INSERT INTO htlc_event (time, event_type, outgoing_channel_id, incoming_channel_id,
-//		event) VALUES($1, $2, $3, $4, $5)`
-//
-//	timestampMs := time.Unix(0, int64(h.TimestampNs)).Round(time.Microsecond)
-//	_, err = db.Exec(stm, timestampMs, h.EventType, h.OutgoingChannelId, h.IncomingChannelId, jb)
-//	if err != nil {
-//		return fmt.Errorf(`storeForwardingHistory -> db.Exec(%s, %v, %v, %v, %v, %v): %v`,
-//			stm, timestampMs, h.EventType, h.OutgoingChannelId, h.IncomingChannelId, jb, err)
-//	}
-//
-//	return nil
-//}
+func storeForwardingHistory(db *sqlx.DB, fwh []*lnrpc.ForwardingEvent) error {
+
+	if len(fwh) > 0 {
+		tx := db.MustBegin()
+
+		for _, event := range fwh {
+
+			dbEvent := dbForwardEvent{
+				Time:       time.Unix(0, int64(event.TimestampNs)).Round(time.Microsecond),
+				TimeNs:     event.TimestampNs,
+				ChanIdIn:   event.ChanIdIn,
+				ChanIdOut:  event.ChanIdOut,
+				FeeMsat:    event.FeeMsat,
+				AmtInMsat:  event.AmtInMsat,
+				AmtOutMsat: event.AmtOutMsat,
+			}
+
+			sql := `
+			INSERT INTO forward(time, time_ns, fee_msat,
+				incoming_channel_id, outgoing_channel_id,
+				incoming_amount_msat, outgoing_amount_msat)
+			VALUES (:time, :time_ns, :fee_msat,
+				:incoming_channel_id, :outgoing_channel_id,
+				:incoming_amount_msat, :outgoing_amount_msat);`
+
+			if _, err := tx.NamedExec(sql, dbEvent); err != nil {
+				return err
+			}
+		}
+		tx.Commit()
+	}
+
+	return nil
+}
 
 // MAXEVENTS is used to set the maximum events in ForwardingHistoryRequest.
 // It's also used to check if we need to request more.
@@ -50,8 +83,11 @@ func fetchLastForwardTime(db *sqlx.DB) (uint64, error) {
 
 	var lastNs uint64
 
-	row := db.QueryRow("SELECT time_ns FROM forward ORDER BY time_ns LIMIT 1")
+	row := db.QueryRow("SELECT time_ns FROM forward ORDER BY time_ns DESC LIMIT 1;")
 	err := row.Scan(&lastNs)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
 	if err != nil {
 		return lastNs, fmt.Errorf("fetchLastForwardTime(): %v", err)
 	}
@@ -73,20 +109,20 @@ func fetchForwardingHistory(lastNs uint64, client lnrpc.LightningClient) (
 	return fwh, nil
 }
 
-// SubscribeForwardingUpdates repeatedly requests forwarding history starting after the last
+// SubscribeForwardingEvents repeatedly requests forwarding history starting after the last
 // forwarding stored in the database and stores new forwards.
-func SubscribeForwardingUpdates(client lnrpc.LightningClient, db *sqlx.DB) error {
-
-	// Fetch the nanosecond timestamp of the most recent forward we already have.
-	lastNs, err := fetchLastForwardTime(db)
-	if err != nil {
-		return err
-	}
+func SubscribeForwardingEvents(client lnrpc.LightningClient, db *sqlx.DB) error {
 
 	// Request the forwarding history at the requested interval.
-	// NB!: This timer is slowly being shifted because of the time required to fetch and store the
-	// response.
-	for range time.Tick(10 * time.Second) {
+	// NB!: This timer is slowly being shifted because of the time required to
+	//fetch and store the response.
+	for range time.Tick(30 * time.Second) {
+
+		// Fetch the nanosecond timestamp of the most recent record we have.
+		lastNs, err := fetchLastForwardTime(db)
+		if err != nil {
+			return err
+		}
 
 		// Keep fetching until LND returns less than the max number of records requested.
 		for {
@@ -96,6 +132,10 @@ func SubscribeForwardingUpdates(client lnrpc.LightningClient, db *sqlx.DB) error
 			}
 
 			// Store the forwarding history
+			err = storeForwardingHistory(db, fwh.ForwardingEvents)
+			if err != nil {
+				return err
+			}
 
 			// Stop fetching if there are fewer forwards than max requested
 			// (indicates that we have the last forwarding record)
@@ -104,19 +144,6 @@ func SubscribeForwardingUpdates(client lnrpc.LightningClient, db *sqlx.DB) error
 			}
 		}
 	}
-
-	//fmt.Println("last offset: ", fwh.LastOffsetIndex)
-	//fmt.Println("last offset: ", fwh.ForwardingEvents[0].TimestampNs)
-	//fmt.Println("last offset: ", fwh.ForwardingEvents[len(fwh.ForwardingEvents)-1].TimestampNs)
-
-	//for _, fw := range fwh.ForwardingEvents {
-	//
-	//}
-
-	//err = storeForwardingHistory(db, fwh)
-	//if err != nil {
-	//	return fmt.Errorf("storeForwardingHistory(): %v", err)
-	//}
 
 	return nil
 }
