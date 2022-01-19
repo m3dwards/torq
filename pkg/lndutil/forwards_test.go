@@ -40,9 +40,9 @@ func (c mockLightningClientForwardingHistory) ForwardingHistory(ctx context.Cont
 	return &r, nil
 }
 
-// TestSubscribeForwardingEventsColdStartBellowLimit tests that the forwarding
+// TestSubscribeForwardingEventsNoForwards tests that the forwarding
 // history is fetched at an interval and returns the correct ForwardingHistory.
-func TestSubscribeForwardingEventsColdStartBellowLimit(t *testing.T) {
+func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 
 	mockDB, mock, err := sqlmock.New()
 	if err != nil {
