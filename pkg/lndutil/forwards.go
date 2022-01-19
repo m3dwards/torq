@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/benbjohnson/clock"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"google.golang.org/grpc"
 	"time"
 )
 
@@ -95,13 +97,19 @@ func fetchLastForwardTime(db *sqlx.DB) (uint64, error) {
 	return lastNs, nil
 }
 
+type lightningClientForwardingHistory interface {
+	ForwardingHistory(ctx context.Context, in *lnrpc.ForwardingHistoryRequest,
+		opts ...grpc.CallOption) (*lnrpc.ForwardingHistoryResponse, error)
+}
+
 // fetchForwardingHistory fetches the forwarding history from LND.
-func fetchForwardingHistory(lastNs uint64, client lnrpc.LightningClient) (
+func fetchForwardingHistory(client lightningClientForwardingHistory, lastNs uint64,
+	maxEvents int) (
 	*lnrpc.ForwardingHistoryResponse, error) {
 
 	ctx := context.Background()
 	fwh, err := client.ForwardingHistory(ctx, &lnrpc.ForwardingHistoryRequest{StartTime: lastNs,
-		NumMaxEvents: uint32(MAXEVENTS)})
+		NumMaxEvents: uint32(maxEvents)})
 	if err != nil {
 		return nil, fmt.Errorf("fetchForwardingHistory -> ForwardingHistory(): %v", err)
 	}
@@ -109,14 +117,47 @@ func fetchForwardingHistory(lastNs uint64, client lnrpc.LightningClient) (
 	return fwh, nil
 }
 
+// FwhOptions allows the caller to adjust the number of forwarding events can be requested at a time
+// and set a custom time interval between requests.
+type FwhOptions struct {
+	MaxEvents *int
+	Tick      <-chan time.Time
+}
+
 // SubscribeForwardingEvents repeatedly requests forwarding history starting after the last
 // forwarding stored in the database and stores new forwards.
-func SubscribeForwardingEvents(client lnrpc.LightningClient, db *sqlx.DB) error {
+func SubscribeForwardingEvents(ctx context.Context, client lightningClientForwardingHistory,
+	db *sqlx.DB,
+	opt *FwhOptions) error {
+
+	me := MAXEVENTS
+
+	// Check if maxEvents has been set and that it is bellow the hard coded maximum defined by
+	// the constant MAXEVENTS.
+	if (opt != nil) && ((*opt.MaxEvents > MAXEVENTS) || (*opt.MaxEvents <= 0)) {
+		me = *opt.MaxEvents
+	}
+
+	// Create the default ticker used to fetch forwards at a set interval
+	c := clock.New()
+	ticker := c.Tick(10 * time.Second)
+
+	// If a custom ticker is set in the options, override the default ticker.
+	if (opt != nil) && (opt.Tick != nil) {
+		ticker = opt.Tick
+	}
 
 	// Request the forwarding history at the requested interval.
 	// NB!: This timer is slowly being shifted because of the time required to
 	//fetch and store the response.
-	for range time.Tick(30 * time.Second) {
+shutDown:
+	for range ticker {
+		// Exit if canceled
+		select {
+		case <-ctx.Done():
+			break shutDown
+		default:
+		}
 
 		// Fetch the nanosecond timestamp of the most recent record we have.
 		lastNs, err := fetchLastForwardTime(db)
@@ -125,8 +166,9 @@ func SubscribeForwardingEvents(client lnrpc.LightningClient, db *sqlx.DB) error 
 		}
 
 		// Keep fetching until LND returns less than the max number of records requested.
+	fetchAll:
 		for {
-			fwh, err := fetchForwardingHistory(lastNs, client)
+			fwh, err := fetchForwardingHistory(client, lastNs, me)
 			if err != nil {
 				return err
 			}
@@ -139,9 +181,10 @@ func SubscribeForwardingEvents(client lnrpc.LightningClient, db *sqlx.DB) error 
 
 			// Stop fetching if there are fewer forwards than max requested
 			// (indicates that we have the last forwarding record)
-			if len(fwh.ForwardingEvents) < MAXEVENTS {
-				break
+			if len(fwh.ForwardingEvents) < me {
+				break fetchAll
 			}
+
 		}
 	}
 

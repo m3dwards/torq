@@ -3,10 +3,13 @@ module github.com/lncapital/torq
 go 1.17
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/benbjohnson/clock v1.0.3
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/lib/pq v1.10.3
 	github.com/lightningnetwork/lnd v0.14.1-beta
+	github.com/mixer/clock v0.0.0-20210321161542-3ac312e8c7e8
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.41.0
