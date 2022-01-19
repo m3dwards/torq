@@ -63,7 +63,8 @@ func storeForwardingHistory(db *sqlx.DB, fwh []*lnrpc.ForwardingEvent) error {
 				incoming_amount_msat, outgoing_amount_msat)
 			VALUES (:time, :time_ns, :fee_msat,
 				:incoming_channel_id, :outgoing_channel_id,
-				:incoming_amount_msat, :outgoing_amount_msat);`
+				:incoming_amount_msat, :outgoing_amount_msat)
+			ON CONFLICT (time, time_ns) DO NOTHING;`
 
 			if _, err := tx.NamedExec(sql, dbEvent); err != nil {
 				return err
@@ -103,12 +104,13 @@ type lightningClientForwardingHistory interface {
 }
 
 // fetchForwardingHistory fetches the forwarding history from LND.
-func fetchForwardingHistory(client lightningClientForwardingHistory, lastNs uint64,
+func fetchForwardingHistory(ctx context.Context, client lightningClientForwardingHistory,
+	lastTimestamp uint64,
 	maxEvents int) (
 	*lnrpc.ForwardingHistoryResponse, error) {
 
-	ctx := context.Background()
-	fwh, err := client.ForwardingHistory(ctx, &lnrpc.ForwardingHistoryRequest{StartTime: lastNs,
+	fwh, err := client.ForwardingHistory(ctx, &lnrpc.ForwardingHistoryRequest{
+		StartTime:    lastTimestamp,
 		NumMaxEvents: uint32(maxEvents)})
 	if err != nil {
 		return nil, fmt.Errorf("fetchForwardingHistory -> ForwardingHistory(): %v", err)
@@ -161,6 +163,7 @@ shutDown:
 
 		// Fetch the nanosecond timestamp of the most recent record we have.
 		lastNs, err := fetchLastForwardTime(db)
+		lastTimestamp := lastNs / uint64(time.Second)
 		if err != nil {
 			return err
 		}
@@ -168,7 +171,7 @@ shutDown:
 		// Keep fetching until LND returns less than the max number of records requested.
 	fetchAll:
 		for {
-			fwh, err := fetchForwardingHistory(client, lastNs, me)
+			fwh, err := fetchForwardingHistory(ctx, client, lastTimestamp, me)
 			if err != nil {
 				return err
 			}
