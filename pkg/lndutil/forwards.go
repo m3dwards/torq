@@ -3,8 +3,8 @@ package lndutil
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"github.com/benbjohnson/clock"
+	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"google.golang.org/grpc"
@@ -67,7 +67,7 @@ func storeForwardingHistory(db *sqlx.DB, fwh []*lnrpc.ForwardingEvent) error {
 			ON CONFLICT (time, time_ns) DO NOTHING;`
 
 			if _, err := tx.NamedExec(sql, dbEvent); err != nil {
-				return err
+				return errors.Wrapf(err, "storeForwardingHistory->tx.NamedExec(%v, %v)", sql, dbEvent)
 			}
 		}
 		tx.Commit()
@@ -88,11 +88,12 @@ func fetchLastForwardTime(db *sqlx.DB) (uint64, error) {
 
 	row := db.QueryRow("SELECT time_ns FROM forward ORDER BY time_ns DESC LIMIT 1;")
 	err := row.Scan(&lastNs)
-	if err == sql.ErrNoRows {
+
+	switch err {
+	case nil:
+		return lastNs, errors.Wrapf(err, "fetchLastForwardTime->row.Scan(%+v)", &lastNs)
+	case sql.ErrNoRows:
 		return 0, nil
-	}
-	if err != nil {
-		return lastNs, fmt.Errorf("fetchLastForwardTime(): %v", err)
 	}
 
 	return lastNs, nil
@@ -109,11 +110,14 @@ func fetchForwardingHistory(ctx context.Context, client lightningClientForwardin
 	maxEvents int) (
 	*lnrpc.ForwardingHistoryResponse, error) {
 
-	fwh, err := client.ForwardingHistory(ctx, &lnrpc.ForwardingHistoryRequest{
+	fwhReq := &lnrpc.ForwardingHistoryRequest{
 		StartTime:    lastTimestamp,
-		NumMaxEvents: uint32(maxEvents)})
+		NumMaxEvents: uint32(maxEvents),
+	}
+	fwh, err := client.ForwardingHistory(ctx, fwhReq)
 	if err != nil {
-		return nil, fmt.Errorf("fetchForwardingHistory -> ForwardingHistory(): %v", err)
+		return nil, errors.Wrapf(err, "fetchForwardingHistory->ForwardingHistory(%v, %v)", ctx,
+			fwhReq)
 	}
 
 	return fwh, nil
@@ -129,8 +133,7 @@ type FwhOptions struct {
 // SubscribeForwardingEvents repeatedly requests forwarding history starting after the last
 // forwarding stored in the database and stores new forwards.
 func SubscribeForwardingEvents(ctx context.Context, client lightningClientForwardingHistory,
-	db *sqlx.DB,
-	opt *FwhOptions) error {
+	db *sqlx.DB, opt *FwhOptions) error {
 
 	me := MAXEVENTS
 
@@ -165,7 +168,7 @@ shutDown:
 		lastNs, err := fetchLastForwardTime(db)
 		lastTimestamp := lastNs / uint64(time.Second)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "SubscribeForwardingEvents->fetchLastForwardTime(%v)", db)
 		}
 
 		// Keep fetching until LND returns less than the max number of records requested.
@@ -173,13 +176,16 @@ shutDown:
 		for {
 			fwh, err := fetchForwardingHistory(ctx, client, lastTimestamp, me)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "SubscribeForwardingEvents->fetchForwardingHistory(%v, "+
+					"%v, %v, %v"+
+					")", ctx, client, lastTimestamp, me)
 			}
 
 			// Store the forwarding history
 			err = storeForwardingHistory(db, fwh.ForwardingEvents)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "SubscribeForwardingEvents->storeForwardingHistory(%v, "+
+					"%v, %v, %v)", db, fwh.ForwardingEvents)
 			}
 
 			// Stop fetching if there are fewer forwards than max requested

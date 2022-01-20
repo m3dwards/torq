@@ -59,7 +59,7 @@ func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 	c := clock.NewMockClock()
 	ctx := context.Background()
 	errs, ctx := errgroup.WithContext(ctx)
-	ctx, stopSub := context.WithCancel(ctx)
+	ctx, stopSubFwE := context.WithCancel(ctx)
 
 	mockTickerInterval := 30 * time.Second
 	me := 1000
@@ -90,7 +90,7 @@ func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Stop subscribing by canceling the context and ticking to the next iteration.
-	stopSub()
+	stopSubFwE()
 	c.AddTime(mockTickerInterval)
 
 	err = mock.ExpectationsWereMet()

@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
@@ -33,7 +33,7 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreHtlcEvents(router, db)
 		if err != nil {
-			return fmt.Errorf("in Start -> SubscribeAndStoreHtlcEvents(): %v", err)
+			return errors.Wrapf(err, "Start->SubscribeAndStoreHtlcEvents(%v, %v)", router, db)
 		}
 		return nil
 	})
@@ -42,7 +42,7 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreChannelEvents(client, db)
 		if err != nil {
-			return fmt.Errorf("in Start -> SubscribeAndStoreChannelEvents(): %v", err)
+			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v)", router, db)
 		}
 		return nil
 	})
@@ -52,7 +52,8 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 
 		err := lndutil.SubscribeForwardingEvents(ctx, client, db, nil)
 		if err != nil {
-			return fmt.Errorf("in Start -> SubscribeForwardingEvents(): %v", err)
+			return errors.Wrapf(err, "Start->SubscribeForwardingEvents(%v, %v, %v, %v)", ctx,
+				client, db, nil)
 		}
 
 		return nil
