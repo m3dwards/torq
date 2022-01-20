@@ -185,7 +185,7 @@ shutDown:
 			err = storeForwardingHistory(db, fwh.ForwardingEvents)
 			if err != nil {
 				return errors.Wrapf(err, "SubscribeForwardingEvents->storeForwardingHistory(%v, "+
-					"%v, %v, %v)", db, fwh.ForwardingEvents)
+					"%v)", db, fwh.ForwardingEvents)
 			}
 
 			// Stop fetching if there are fewer forwards than max requested
