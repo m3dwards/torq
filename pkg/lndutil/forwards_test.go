@@ -3,6 +3,7 @@ package lndutil
 import (
 	"context"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/mixer/clock"
@@ -74,7 +75,7 @@ func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 	errs.Go(func() error {
 		err = SubscribeForwardingEvents(ctx, mockClient, db, &opt)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal(errors.Wrapf(err, "SubscribeForwardingEvents(%v, %v, %v, %v)", ctx, mockClient, db, &opt))
 		}
 		return nil
 	})
@@ -93,13 +94,16 @@ func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 	stopSubFwE()
 	c.AddTime(mockTickerInterval)
 
-	err = mock.ExpectationsWereMet()
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	// Check for potential errors from the goroutine (SubscribeForwardingEvents)
 	err = errs.Wait()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
+
+	// Check if SubscribeForwardingEvents requested the last stored date
+	err = mock.ExpectationsWereMet()
+	if err != nil {
+		t.Error(err)
+	}
+
 }
