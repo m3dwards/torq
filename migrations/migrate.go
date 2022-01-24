@@ -14,16 +14,13 @@ import (
 var static embed.FS
 
 // newMigrationInstance fetches sql files and creates a new migration instance.
-func newMigrationInstance() (*migrate.Migrate, error) {
+func newMigrationInstance(connString string) (*migrate.Migrate, error) {
 	sourceInstance, err := httpfs.New(http.FS(static), ".")
 	if err != nil {
 		return nil, fmt.Errorf("invalid source instance, %w", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance(
-		"httpfs",
-		sourceInstance,
-		"postgres://torq:password@localhost:5432/torq?sslmode=disable")
+	m, err := migrate.NewWithSourceInstance("httpfs", sourceInstance, connString)
 	if err != nil {
 		return nil, fmt.Errorf("could not create migration instance: %v", err)
 	}
@@ -32,8 +29,8 @@ func newMigrationInstance() (*migrate.Migrate, error) {
 }
 
 // MigrateUp migrates up to the latest migration version. It should be used when the version number changes.
-func MigrateUp() error {
-	m, err := newMigrationInstance()
+func MigrateUp(connString string) error {
+	m, err := newMigrationInstance(connString)
 	if err != nil {
 		return err
 	}
@@ -68,8 +65,8 @@ func MigrateUp() error {
 }
 
 // MigrateDown migrates the database down one step. Should only be used during development.
-func MigrateDown() error {
-	m, err := newMigrationInstance()
+func MigrateDown(connString string) error {
+	m, err := newMigrationInstance(connString)
 	if err != nil {
 		return err
 	}

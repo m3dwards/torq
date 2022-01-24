@@ -21,7 +21,7 @@ func Given(t *testing.T, txt string) {
 }
 
 func GivenF(t *testing.T, txt string, a ...interface{}) {
-	t.Logf(colorCyan + fmt.Sprintf(txt, a) + colorReset)
+	t.Logf(fmt.Sprintf(colorCyan+txt+colorReset, a))
 }
 
 func WhenF(t *testing.T, txt string, a ...interface{}) {
@@ -34,4 +34,8 @@ func Successf(t *testing.T, txt string, a ...interface{}) {
 
 func Errorf(t *testing.T, txt string, a ...interface{}) {
 	t.Errorf(fmt.Sprintf(colorRed+"  "+failed+"  "+txt+colorReset, a...))
+}
+
+func Fatalf(t *testing.T, txt string, a ...interface{}) {
+	t.Fatalf(fmt.Sprintf(colorRed+"  "+failed+"  "+txt+colorReset, a...))
 }

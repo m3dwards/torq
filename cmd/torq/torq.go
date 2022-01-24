@@ -78,6 +78,16 @@ func main() {
 			Usage: "Name of the database",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "db_port",
+			Value: "5432",
+			Usage: "port of the database",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:  "db_host",
+			Value: "localhost",
+			Usage: "host of the database",
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "db_user",
 			Usage: "Name of the postgres user with access to the database",
 		}),
@@ -109,7 +119,9 @@ func main() {
 		Action: func(c *cli.Context) error {
 
 			// Check if the database needs to be migrated.
-			err := migrations.MigrateUp()
+			cs := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.String("db_user"), c.String("db_password"),
+				c.String("db_host"), c.String("db_port"), c.String("db_name"))
+			err := migrations.MigrateUp(cs)
 			if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 				return err
 			}
@@ -152,7 +164,9 @@ func main() {
 		Name:  "migrate_up",
 		Usage: "Migrates the database to the latest version",
 		Action: func(c *cli.Context) error {
-			err := migrations.MigrateUp()
+			cs := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.String("db_user"), c.String("db_password"),
+				c.String("db_host"), c.String("db_port"), c.String("db_name"))
+			err := migrations.MigrateUp(cs)
 			if err != nil {
 				return err
 			}
@@ -165,7 +179,9 @@ func main() {
 		Name:  "migrate_down",
 		Usage: "Migrates the database down one step",
 		Action: func(c *cli.Context) error {
-			err := migrations.MigrateDown()
+			cs := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.String("db_user"), c.String("db_password"),
+				c.String("db_host"), c.String("db_port"), c.String("db_name"))
+			err := migrations.MigrateDown(cs)
 			if err != nil {
 				return err
 			}
