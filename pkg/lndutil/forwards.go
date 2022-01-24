@@ -39,6 +39,16 @@ type dbForwardEvent struct {
 	AmtOutMsat uint64 `db:"outgoing_amount_msat"`
 }
 
+func convMicro(ns uint64) time.Time {
+	return time.Unix(0, int64(ns)).Round(time.Microsecond)
+}
+
+const querySfwh = `INSERT INTO forward(time, time_ns, fee_msat,
+		incoming_channel_id, outgoing_channel_id,
+		incoming_amount_msat, outgoing_amount_msat)
+	VALUES ($1, $2, $3,$4, $5,$6, $7)
+	ON CONFLICT (time, time_ns) DO NOTHING;`
+
 // storeForwardingHistory
 func storeForwardingHistory(db *sqlx.DB, fwh []*lnrpc.ForwardingEvent) error {
 
@@ -47,27 +57,11 @@ func storeForwardingHistory(db *sqlx.DB, fwh []*lnrpc.ForwardingEvent) error {
 
 		for _, event := range fwh {
 
-			dbEvent := dbForwardEvent{
-				Time:       time.Unix(0, int64(event.TimestampNs)).Round(time.Microsecond),
-				TimeNs:     event.TimestampNs,
-				ChanIdIn:   event.ChanIdIn,
-				ChanIdOut:  event.ChanIdOut,
-				FeeMsat:    event.FeeMsat,
-				AmtInMsat:  event.AmtInMsat,
-				AmtOutMsat: event.AmtOutMsat,
-			}
-
-			sql := `
-			INSERT INTO forward(time, time_ns, fee_msat,
-				incoming_channel_id, outgoing_channel_id,
-				incoming_amount_msat, outgoing_amount_msat)
-			VALUES (:time, :time_ns, :fee_msat,
-				:incoming_channel_id, :outgoing_channel_id,
-				:incoming_amount_msat, :outgoing_amount_msat)
-			ON CONFLICT (time, time_ns) DO NOTHING;`
-
-			if _, err := tx.NamedExec(sql, dbEvent); err != nil {
-				return errors.Wrapf(err, "storeForwardingHistory->tx.NamedExec(%v, %v)", sql, dbEvent)
+			if _, err := tx.Exec(querySfwh, convMicro(event.TimestampNs), event.TimestampNs,
+				event.FeeMsat, event.ChanIdIn, event.ChanIdOut, event.AmtInMsat,
+				event.AmtOutMsat); err != nil {
+				return errors.Wrapf(err, "storeForwardingHistory->tx.Exec(%v)",
+					querySfwh)
 			}
 		}
 		tx.Commit()

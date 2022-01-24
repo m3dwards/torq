@@ -6,9 +6,11 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lncapital/torq/testutil"
 	"github.com/mixer/clock"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -41,9 +43,9 @@ func (c mockLightningClientForwardingHistory) ForwardingHistory(ctx context.Cont
 	return &r, nil
 }
 
-// TestSubscribeForwardingEventsNoForwards tests that the forwarding
-// history is fetched at an interval and returns the correct ForwardingHistory.
-func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
+// TestSubscribeForwardingIntervals tests that the forwarding
+// history is fetched at intervals.
+func TestSubscribeForwardingIntervals(t *testing.T) {
 
 	mockDB, mock, err := sqlmock.New()
 	if err != nil {
@@ -52,44 +54,105 @@ func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 	defer mockDB.Close()
 	db := sqlx.NewDb(mockDB, "sqlmock")
 
-	mockClient := mockLightningClientForwardingHistory{
-		ForwardingEvents: []*lnrpc.ForwardingEvent{},
-		LastOffsetIndex:  0,
-	}
-
-	c := clock.NewMockClock()
 	ctx := context.Background()
 	errs, ctx := errgroup.WithContext(ctx)
 	ctx, stopSubFwE := context.WithCancel(ctx)
+	c := clock.NewMockClock(time.Unix(0, 0))
 
 	mockTickerInterval := 30 * time.Second
 	me := 1000
-
 	opt := FwhOptions{
 		MaxEvents: &me,
 		Tick:      c.Tick(mockTickerInterval),
 	}
 
+	mclient := mockLightningClientForwardingHistory{
+		ForwardingEvents: []*lnrpc.ForwardingEvent{
+			{
+				ChanIdIn:    1234,
+				ChanIdOut:   2345,
+				AmtIn:       11,
+				AmtOut:      10,
+				Fee:         1,
+				FeeMsat:     1000,
+				AmtInMsat:   11000,
+				AmtOutMsat:  10000,
+				TimestampNs: uint64(c.Now().UnixNano()),
+			},
+			{
+				ChanIdIn:    1234,
+				ChanIdOut:   2345,
+				AmtIn:       11,
+				AmtOut:      10,
+				Fee:         1,
+				FeeMsat:     1000,
+				AmtInMsat:   11000,
+				AmtOutMsat:  10000,
+				TimestampNs: uint64(c.Now().UnixNano()),
+			},
+			{
+				ChanIdIn:    1234,
+				ChanIdOut:   2345,
+				AmtIn:       11,
+				AmtOut:      10,
+				Fee:         1,
+				FeeMsat:     1000,
+				AmtInMsat:   11000,
+				AmtOutMsat:  10000,
+				TimestampNs: uint64(c.Now().UnixNano()) + 1000000000,
+			},
+		},
+		LastOffsetIndex: 0,
+	}
+
 	// Start subscribing in a goroutine to allow the test to continue simulating time through the
 	// mocked time object.
 	errs.Go(func() error {
-		err = SubscribeForwardingEvents(ctx, mockClient, db, &opt)
+		err = SubscribeForwardingEvents(ctx, mclient, db, &opt)
 		if err != nil {
-			t.Fatal(errors.Wrapf(err, "SubscribeForwardingEvents(%v, %v, %v, %v)", ctx, mockClient, db, &opt))
+			t.Fatal(errors.Wrapf(err, "SubscribeForwardingEvents(%v, %v, %v, %v)", ctx,
+				mclient, db, &opt))
 		}
 		return nil
 	})
 
-	// Simulate passing of 3 intervals
-	for i := 0; i < 3; i++ {
+	// Simulate passing intervals
+
+	numbTicks := 3
+	for i := 0; i < numbTicks; i++ {
 		mock.ExpectQuery("SELECT time_ns FROM forward ORDER BY time_ns DESC LIMIT 1;").
-			WillReturnRows(mock.NewRows([]string{"time_ns"}).AddRow(1))
+			WillReturnRows(mock.NewRows([]string{"time_ns"}).AddRow(0))
+
+		mock.ExpectBegin()
+		for _, event := range mclient.ForwardingEvents {
+			mock.ExpectExec(regexp.QuoteMeta(querySfwh)).WithArgs(
+				convMicro(event.TimestampNs), event.TimestampNs, event.FeeMsat,
+				event.ChanIdIn, event.ChanIdOut, event.AmtInMsat,
+				event.AmtOutMsat).WillReturnResult(sqlmock.NewResult(1, 1))
+		}
+		mock.ExpectCommit()
+
 		c.AddTime(mockTickerInterval)
+
 	}
 
 	// Give the goroutine time to act on the mocked time interval
-	time.Sleep(1 * time.Second)
+	time.Sleep(1000 * time.Millisecond)
 
+	testutil.Given(t, "Given the need to test fwd events subscriptions.")
+
+	testutil.WhenF(t, "When checking that the loop repeats.")
+
+	err = mock.ExpectationsWereMet()
+	if err != nil {
+		testutil.Errorf(t, "We should see the database be queried %d times : %v", numbTicks,
+			err)
+	} else {
+		testutil.Successf(t, "We should see the database be queried %d times",
+			numbTicks)
+	}
+
+	time.Sleep(1000 * time.Millisecond)
 	// Stop subscribing by canceling the context and ticking to the next iteration.
 	stopSubFwE()
 	c.AddTime(mockTickerInterval)
@@ -97,13 +160,7 @@ func TestSubscribeForwardingEventsNoForwards(t *testing.T) {
 	// Check for potential errors from the goroutine (SubscribeForwardingEvents)
 	err = errs.Wait()
 	if err != nil {
-		t.Error(err)
-	}
-
-	// Check if SubscribeForwardingEvents requested the last stored date
-	err = mock.ExpectationsWereMet()
-	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 }
