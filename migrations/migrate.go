@@ -1,9 +1,11 @@
 package migrations
 
 import (
+	"database/sql"
 	"embed"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
@@ -14,13 +16,14 @@ import (
 var static embed.FS
 
 // newMigrationInstance fetches sql files and creates a new migration instance.
-func newMigrationInstance(connString string) (*migrate.Migrate, error) {
+func newMigrationInstance(db *sql.DB) (*migrate.Migrate, error) {
 	sourceInstance, err := httpfs.New(http.FS(static), ".")
 	if err != nil {
 		return nil, fmt.Errorf("invalid source instance, %w", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance("httpfs", sourceInstance, connString)
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	m, err := migrate.NewWithInstance("httpfs", sourceInstance, "postgres", driver)
 	if err != nil {
 		return nil, fmt.Errorf("could not create migration instance: %v", err)
 	}
@@ -29,17 +32,11 @@ func newMigrationInstance(connString string) (*migrate.Migrate, error) {
 }
 
 // MigrateUp migrates up to the latest migration version. It should be used when the version number changes.
-func MigrateUp(connString string) error {
-	m, err := newMigrationInstance(connString)
+func MigrateUp(db *sql.DB) error {
+	m, err := newMigrationInstance(db)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		cerr, _ := m.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
 
 	err = m.Up()
 	dirtyErr, ok := err.(migrate.ErrDirty)
@@ -65,17 +62,11 @@ func MigrateUp(connString string) error {
 }
 
 // MigrateDown migrates the database down one step. Should only be used during development.
-func MigrateDown(connString string) error {
-	m, err := newMigrationInstance(connString)
+func MigrateDown(db *sql.DB) error {
+	m, err := newMigrationInstance(db)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		cerr, _ := m.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
 
 	err = m.Steps(-1)
 	if err != nil {

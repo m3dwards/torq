@@ -118,10 +118,21 @@ func main() {
 		Usage: "Starts the server, checking ",
 		Action: func(c *cli.Context) error {
 
+			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
+				c.String("db_password"), c.String("db_host"), c.String("db_port"))
+			if err != nil {
+				return fmt.Errorf("(cmd/lnc streamHtlcCommand) error connecting to db: %v", err)
+			}
+
+			defer func() {
+				cerr := db.Close()
+				if err == nil {
+					err = cerr
+				}
+			}()
+
 			// Check if the database needs to be migrated.
-			cs := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.String("db_user"), c.String("db_password"),
-				c.String("db_host"), c.String("db_port"), c.String("db_name"))
-			err := migrations.MigrateUp(cs)
+			err = migrations.MigrateUp(db.DB)
 			if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 				return err
 			}
@@ -134,18 +145,6 @@ func main() {
 			if err != nil {
 				return fmt.Errorf("failed to connect to lnd: %v", err)
 			}
-
-			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"), c.String("db_password"))
-			if err != nil {
-				return fmt.Errorf("(cmd/lnc streamHtlcCommand) error connecting to db: %v", err)
-			}
-
-			defer func() {
-				cerr := db.Close()
-				if err == nil {
-					err = cerr
-				}
-			}()
 
 			// Print startup message
 			fmt.Printf("Starting Torq v%s\n", build.Version())
@@ -164,9 +163,20 @@ func main() {
 		Name:  "migrate_up",
 		Usage: "Migrates the database to the latest version",
 		Action: func(c *cli.Context) error {
-			cs := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.String("db_user"), c.String("db_password"),
-				c.String("db_host"), c.String("db_port"), c.String("db_name"))
-			err := migrations.MigrateUp(cs)
+			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
+				c.String("db_password"), c.String("db_host"), c.String("db_port"))
+			if err != nil {
+				return err
+			}
+
+			defer func() {
+				cerr := db.Close()
+				if err == nil {
+					err = cerr
+				}
+			}()
+
+			err = migrations.MigrateUp(db.DB)
 			if err != nil {
 				return err
 			}
@@ -179,9 +189,20 @@ func main() {
 		Name:  "migrate_down",
 		Usage: "Migrates the database down one step",
 		Action: func(c *cli.Context) error {
-			cs := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.String("db_user"), c.String("db_password"),
-				c.String("db_host"), c.String("db_port"), c.String("db_name"))
-			err := migrations.MigrateDown(cs)
+			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
+				c.String("db_password"), c.String("db_host"), c.String("db_port"))
+			if err != nil {
+				return err
+			}
+
+			defer func() {
+				cerr := db.Close()
+				if err == nil {
+					err = cerr
+				}
+			}()
+
+			err = migrations.MigrateDown(db.DB)
 			if err != nil {
 				return err
 			}
