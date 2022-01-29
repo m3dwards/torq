@@ -10,8 +10,8 @@ import (
 	"gopkg.in/macaroon.v2"
 )
 
-// ConnectLnd connects to LND using gRPC.
-func ConnectLnd(host, tlsCertPath, macaroonPath string) (*grpc.ClientConn, error) {
+// Connect connects to LND using gRPC.
+func Connect(host, tlsCertPath, macaroonPath string) (*grpc.ClientConn, error) {
 
 	tlsCreds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
 	if err != nil {

@@ -150,7 +150,7 @@ func main() {
 
 			fmt.Println("Connecting to lightning node")
 			// Connect to the node
-			conn, err := lndutil.ConnectLnd(
+			conn, err := lndutil.Connect(
 				c.String("lnd.node_address"),
 				c.String("lnd.tls"),
 				c.String("lnd.macaroon"))
