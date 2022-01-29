@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+option go_package = "github.com/lncapital/torq/torqrpc";
+
+package torqrpc;
+
+service torqrpc {
+  rpc GetForwards (ForwardsRequest) returns (ForwardResponse);
+}
+
+message ForwardResponse{}
+message ForwardsRequest{}

@@ -1,16 +1,22 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/lncapital/torq/build"
 	"github.com/lncapital/torq/cmd/torq/internal/subscribe"
+	"github.com/lncapital/torq/cmd/torq/internal/torqsrv"
 	"github.com/lncapital/torq/migrations"
 	"github.com/lncapital/torq/pkg/database"
 	"github.com/lncapital/torq/pkg/lndutil"
+	"github.com/lncapital/torq/torqrpc"
 	"github.com/urfave/cli/v2"
 	"github.com/urfave/cli/v2/altsrc"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"log"
 	"os"
 )
@@ -46,53 +52,53 @@ func main() {
 
 		// Torq connection details
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "grpc_host",
+			Name:  "torq.host",
 			Value: "localhost",
 			Usage: "Host address for your regular grpc",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "grpc_port",
+			Name:  "torq.port",
 			Value: "50050",
 			Usage: "Port for your regular grpc",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "grpc_web_port",
+			Name:  "torq.web_port",
 			Value: "50051",
 			Usage: "Port for your web grpc",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "cert",
+			Name:  "torq.cert",
 			Value: "./cert.pem",
 			Usage: "Path to your cert.pem file used by the GRPC server (torq)",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "key",
+			Name:  "torq.key",
 			Value: "./key.pem",
 			Usage: "Path to your key.pem file used by the GRPC server",
 		}),
 
 		// Torq database
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "db_name",
+			Name:  "db.name",
 			Value: "torq",
 			Usage: "Name of the database",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "db_port",
+			Name:  "db.port",
 			Value: "5432",
 			Usage: "port of the database",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "db_host",
+			Name:  "db.host",
 			Value: "localhost",
 			Usage: "host of the database",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "db_user",
+			Name:  "db.user",
 			Usage: "Name of the postgres user with access to the database",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:  "db_password",
+			Name:  "db.password",
 			Usage: "Name of the postgres user with access to the database",
 		}),
 
@@ -118,8 +124,12 @@ func main() {
 		Usage: "Start the main daemon",
 		Action: func(c *cli.Context) error {
 
-			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
-				c.String("db_password"), c.String("db_host"), c.String("db_port"))
+			// Print startup message
+			fmt.Printf("Starting Torq v%s\n", build.Version())
+
+			fmt.Println("Connecting to the Torq database")
+			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
+				c.String("db.password"), c.String("db.host"), c.String("db.port"))
 			if err != nil {
 				return fmt.Errorf("(cmd/lnc streamHtlcCommand) error connecting to db: %v", err)
 			}
@@ -131,12 +141,14 @@ func main() {
 				}
 			}()
 
+			fmt.Println("Checking for migrations..")
 			// Check if the database needs to be migrated.
 			err = migrations.MigrateUp(db.DB)
 			if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 				return err
 			}
 
+			fmt.Println("Connecting to lightning node")
 			// Connect to the node
 			conn, err := lndutil.ConnectLnd(
 				c.String("lnd.node_address"),
@@ -147,14 +159,60 @@ func main() {
 				return fmt.Errorf("failed to connect to lnd: %v", err)
 			}
 
-			// Print startup message
-			fmt.Printf("Starting Torq v%s\n", build.Version())
+			ctx := context.Background()
+			errs, ctx := errgroup.WithContext(ctx)
 
 			// Subscribe to data from the node
-			err = subscribe.Start(conn, db)
+			//   TODO: Attempt to restart subscriptions if they fail.
+			errs.Go(func() error {
+				err = subscribe.Start(conn, db)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+
+			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
+				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"))
+
+			// Starts the grpc server
+			errs.Go(srv.StartGrpc)
+
+			// Starts the grpc-web proxy server
+			errs.Go(srv.StartWeb)
+
+			return errs.Wait()
+		},
+	}
+
+	// TODO: Remove. Only used for manually testing grpc calls
+	callGrpc := &cli.Command{
+		Name:  "call",
+		Usage: "",
+		Action: func(c *cli.Context) error {
+
+			var conn *grpc.ClientConn
+
+			creds, err := credentials.NewClientTLSFromFile(c.String("torq.cert"), "")
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to load certificates: %v", err)
 			}
+
+			conn, err = grpc.Dial(fmt.Sprintf("%s:%s", c.String("torq.host"),
+				c.String("torq.port")), grpc.WithTransportCredentials(creds))
+			if err != nil {
+				log.Fatalf("did not connect: %s", err)
+			}
+			defer conn.Close()
+
+			client := torqrpc.NewTorqrpcClient(conn)
+			ctx := context.Background()
+			response, err := client.GetForwards(ctx, &torqrpc.ForwardsRequest{})
+			if err != nil {
+				return fmt.Errorf("error when calling GetForwards: %s", err)
+			}
+
+			log.Printf("Response from server: %s", response)
 
 			return nil
 		},
@@ -164,8 +222,8 @@ func main() {
 		Name:  "migrate_up",
 		Usage: "Migrates the database to the latest version",
 		Action: func(c *cli.Context) error {
-			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
-				c.String("db_password"), c.String("db_host"), c.String("db_port"))
+			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
+				c.String("db.password"), c.String("db.host"), c.String("db.port"))
 			if err != nil {
 				return err
 			}
@@ -190,8 +248,8 @@ func main() {
 		Name:  "migrate_down",
 		Usage: "Migrates the database down one step",
 		Action: func(c *cli.Context) error {
-			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
-				c.String("db_password"), c.String("db_host"), c.String("db_port"))
+			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
+				c.String("db.password"), c.String("db.host"), c.String("db.port"))
 			if err != nil {
 				return err
 			}
@@ -217,6 +275,7 @@ func main() {
 
 	app.Commands = cli.Commands{
 		start,
+		callGrpc,
 		migrateUp,
 		migrateDown,
 	}
