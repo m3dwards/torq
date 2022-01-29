@@ -89,7 +89,7 @@ func (s *torqGrpc) StartWeb() error {
 	})
 
 	fmt.Printf("gRPC proxy server listening on: %s:%s \n", s.host, s.wport)
-	dns := fmt.Sprintf("%s:%d", s.host, s.wport)
+	dns := fmt.Sprintf("%s:%s", s.host, s.wport)
 	err := http.ListenAndServeTLS(dns, s.certPath, s.keyPath, nil)
 
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *torqGrpc) StartGrpc() error {
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", s.host, s.port))
 	if err != nil {
-		return errors.Wrapf(err, "net.Listen(\"tcp\", %s", fmt.Sprintf("%s:%d", s.host, s.port))
+		return errors.Wrapf(err, "net.Listen(\"tcp\", %s", fmt.Sprintf("%s:%s", s.host, s.port))
 	}
 
 	// TODO: Replace with log
