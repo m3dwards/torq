@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/lncapital/torq/build"
+	"github.com/lncapital/torq/cmd/torq/internal/subscribe"
 	"github.com/lncapital/torq/migrations"
 	"github.com/lncapital/torq/pkg/database"
 	"github.com/lncapital/torq/pkg/lndutil"
-	"github.com/lncapital/torq/server"
 	"github.com/urfave/cli/v2"
 	"github.com/urfave/cli/v2/altsrc"
 	"log"
@@ -115,7 +115,7 @@ func main() {
 
 	start := &cli.Command{
 		Name:  "start",
-		Usage: "Starts the server, checking ",
+		Usage: "Start the main daemon",
 		Action: func(c *cli.Context) error {
 
 			db, err := database.PgConnect(c.String("db_name"), c.String("db_user"),
@@ -137,6 +137,7 @@ func main() {
 				return err
 			}
 
+			// Connect to the node
 			conn, err := lndutil.ConnectLnd(
 				c.String("lnd.node_address"),
 				c.String("lnd.tls"),
@@ -149,8 +150,8 @@ func main() {
 			// Print startup message
 			fmt.Printf("Starting Torq v%s\n", build.Version())
 
-			// Start the server
-			err = server.Start(conn, db)
+			// Subscribe to data from the node
+			err = subscribe.Start(conn, db)
 			if err != nil {
 				return err
 			}
