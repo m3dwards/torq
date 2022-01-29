@@ -1,0 +1,2 @@
+ALTER TABLE forward
+DROP CONSTRAINT unique_time_ns;

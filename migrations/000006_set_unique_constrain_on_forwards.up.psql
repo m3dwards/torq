@@ -1,0 +1,2 @@
+ALTER TABLE forward
+ADD CONSTRAINT unique_time_ns UNIQUE (time, time_ns);

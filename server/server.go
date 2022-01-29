@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
@@ -21,6 +21,11 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	client := lnrpc.NewLightningClient(conn)
 
 	// Create an error group to catch errors from go routines.
+	// TODO: Improve this by using the context to propogate the error,
+	//   shutting down the if one of the subscribe go routines fail.
+	//   https://www.fullstory.com/blog/why-errgroup-withcontext-in-golang-server-handlers/
+	// TODO: Also consider using the same context used by the gRPC connection from Golang and the
+	//   gRPC server of Torq
 	ctx := context.Background()
 	errs, ctx := errgroup.WithContext(ctx)
 
@@ -28,7 +33,7 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreHtlcEvents(router, db)
 		if err != nil {
-			return fmt.Errorf("in Start -> SubscribeAndStoreHtlcEvents(): %v", err)
+			return errors.Wrapf(err, "Start->SubscribeAndStoreHtlcEvents(%v, %v)", router, db)
 		}
 		return nil
 	})
@@ -37,7 +42,7 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreChannelEvents(client, db)
 		if err != nil {
-			return fmt.Errorf("in Start -> SubscribeAndStoreChannelEvents(): %v", err)
+			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v)", router, db)
 		}
 		return nil
 	})
@@ -45,9 +50,10 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	// Forwarding history
 	errs.Go(func() error {
 
-		err := lndutil.SubscribeForwardingEvents(client, db)
+		err := lndutil.SubscribeForwardingEvents(ctx, client, db, nil)
 		if err != nil {
-			return fmt.Errorf("in Start -> SubscribeForwardingEvents(): %v", err)
+			return errors.Wrapf(err, "Start->SubscribeForwardingEvents(%v, %v, %v, %v)", ctx,
+				client, db, nil)
 		}
 
 		return nil
