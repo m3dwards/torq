@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"log"
 	"os"
+	"time"
 )
 
 func loadFlags() func(context *cli.Context) (altsrc.InputSourceContext, error) {
@@ -173,7 +174,7 @@ func main() {
 			})
 
 			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
-				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"))
+				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
 
 			// Starts the grpc server
 			errs.Go(srv.StartGrpc)
@@ -207,9 +208,13 @@ func main() {
 
 			client := torqrpc.NewTorqrpcClient(conn)
 			ctx := context.Background()
-			response, err := client.GetForwards(ctx, &torqrpc.ForwardsRequest{})
+			response, err := client.GetChannelFlow(ctx, &torqrpc.ChannelFlowRequest{
+				FromTime: 0,
+				ToTime:   time.Now().Unix(),
+				ChanIds:  []uint64{779216194111275009},
+			})
 			if err != nil {
-				return fmt.Errorf("error when calling GetForwards: %s", err)
+				return err
 			}
 
 			log.Printf("Response from server: %s", response)

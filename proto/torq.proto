@@ -5,8 +5,114 @@ option go_package = "github.com/lncapital/torq/torqrpc";
 package torqrpc;
 
 service torqrpc {
-  rpc GetForwards (ForwardsRequest) returns (ForwardResponse);
+  rpc GetForwards (ForwardsRequest) returns (Forwards);
+  rpc GetChannelFlow (ChannelFlowRequest) returns (ChannelFlow);
 }
 
-message ForwardResponse{}
+message ChannelFlowRequest {
+    // From what date/time (unix timestamp)
+  int64 from_time = 1;
+
+  // To what date/time (unix timestamp)
+  int64 to_time = 2;
+
+  // TODO: Add "repeated" here to request multiple channels at once.
+  repeated uint64 chan_ids = 3 [jstype = JS_STRING];
+}
+
+message ChannelFlow {
+
+  // What channel ID's the flow is for
+  repeated uint64 chan_ids = 1  [jstype = JS_STRING];
+
+  // From what date/time (unix timestamp)
+  int64 from_time = 2;
+
+  // To what date/time (unix timestamp)
+  int64 to_time =3;
+
+  // Fees earned by other channels using this channels inbound liquidity.
+  uint64 fee_in = 4;
+
+  // Fees earned by this channels outbound liquidity
+  uint64 fee_out = 5;
+
+  // Amount inbound
+  uint64 amt_in = 6;
+
+  // Amount outbound
+  uint64 amt_out = 7;
+
+  // Number of forwards inbound
+  int64 count_in = 8;
+
+  // Number of forwards outbound
+  int64 count_out = 9;
+
+  // TODO: Consider adding balance at start and finish of time interval
+}
+
+message AggregatedForwards {
+
+
+	int64 from_time = 1;
+
+  int64 to_time =2;
+
+  // The incoming channel ID that carried the HTLC that created the circuit.
+  uint64 chan_id_in = 3 [jstype = JS_STRING];
+
+  // The outgoing channel ID that carried the preimage that completed the
+  // circuit.
+  uint64 chan_id_out = 4 [jstype = JS_STRING];
+
+  // The total fee (in satoshis) that this payment circuit carried.
+  uint64 fee = 5;
+
+  // The total amount (in satoshis) of the incoming HTLC that created half
+  // the circuit.
+  uint64 amt_in = 6;
+
+  // The total amount (in satoshis) of the outgoing HTLC that created the
+  // second half of the circuit.
+  uint64 amt_out = 7;
+
+  int64 count_in = 8;
+
+  int64 count_out = 9;
+}
+
+
+message Forwards {
+  repeated Forward forwards = 1;
+}
+
+message Forward {
+
+  // The microseconds' version of TimestampNs, used by TimescaleDB
+	int64 time = 1;
+
+  // The number of nanoseconds elapsed since January 1, 1970 UTC when this
+  // circuit was completed.
+  int64 time_ns =2 [jstype = JS_STRING];
+
+  // The incoming channel ID that carried the HTLC that created the circuit.
+  uint64 chan_id_in = 3 [jstype = JS_STRING];
+
+  // The outgoing channel ID that carried the preimage that completed the
+  // circuit.
+  uint64 chan_id_out = 4 [jstype = JS_STRING];
+
+  // The total fee (in satoshis) that this payment circuit carried.
+  uint64 fee = 5;
+
+  // The total amount (in satoshis) of the incoming HTLC that created half
+  // the circuit.
+  uint64 amt_in = 6;
+
+  // The total amount (in satoshis) of the outgoing HTLC that created the
+  // second half of the circuit.
+  uint64 amt_out = 7;
+}
+
 message ForwardsRequest{}

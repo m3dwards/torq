@@ -1,23 +1,16 @@
 package torqsrv
 
 import (
-	"context"
 	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/jmoiron/sqlx"
 	"github.com/lncapital/torq/torqrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"net"
 	"net/http"
 )
-
-//type Server struct {
-//	//lncrpc.GetNodeChannelsRequest
-//	//lncrpc.GetNodeChannelsResponse
-//	//lncrpc.UnimplementedLncrpcServer
-//	LndConn grpc.ClientConnInterface
-//}
 
 type torqGrpc struct {
 	certPath string
@@ -27,26 +20,11 @@ type torqGrpc struct {
 	wport    string
 	srv      *grpc.Server
 	wsrv     *grpcweb.WrappedGrpcServer
+	db       *sqlx.DB
 	torqrpc.UnimplementedTorqrpcServer
 }
 
-func (s torqGrpc) GetForwards(context.Context, *torqrpc.ForwardsRequest) (*torqrpc.
-	ForwardResponse, error) {
-	//client := lnrpc.NewLightningClient(s.LndConn)
-	//ncl, err := state.CreateNodeChannelList(client)
-	//
-	//if err != nil {
-	//	return nil, fmt.Errorf("error CreateNodeChannelList: %v", err)
-	//}
-	//
-	//r := lncrpc.GetNodeChannelsResponse{
-	//	Nodes: ncl,
-	//}
-
-	return &torqrpc.ForwardResponse{}, nil
-}
-
-func NewServer(host, port, wport, cert, key string) (torqGrpc, error) {
+func NewServer(host, port, wport, cert, key string, db *sqlx.DB) (torqGrpc, error) {
 
 	creds, err := credentials.NewServerTLSFromFile(cert, key)
 	if err != nil {
@@ -65,6 +43,7 @@ func NewServer(host, port, wport, cert, key string) (torqGrpc, error) {
 		wport:    wport,
 		srv:      s,
 		wsrv:     grpcweb.WrapServer(s),
+		db:       db,
 	}
 
 	torqrpc.RegisterTorqrpcServer(srv.srv, &srv)
