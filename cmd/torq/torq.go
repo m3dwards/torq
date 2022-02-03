@@ -96,10 +96,12 @@ func main() {
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "db.user",
+			Value: "torq",
 			Usage: "Name of the postgres user with access to the database",
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:  "db.password",
+			Value: "password",
 			Usage: "Name of the postgres user with access to the database",
 		}),
 
