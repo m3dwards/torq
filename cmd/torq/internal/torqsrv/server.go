@@ -18,8 +18,8 @@ type torqGrpc struct {
 	host     string
 	port     string
 	wport    string
-	srv      *grpc.Server
-	wsrv     *grpcweb.WrappedGrpcServer
+	Srv      *grpc.Server
+	Wsrv     *grpcweb.WrappedGrpcServer
 	db       *sqlx.DB
 	torqrpc.UnimplementedTorqrpcServer
 }
@@ -41,12 +41,12 @@ func NewServer(host, port, wport, cert, key string, db *sqlx.DB) (torqGrpc, erro
 		host:     host,
 		port:     port,
 		wport:    wport,
-		srv:      s,
-		wsrv:     grpcweb.WrapServer(s),
+		Srv:      s,
+		Wsrv:     grpcweb.WrapServer(s),
 		db:       db,
 	}
 
-	torqrpc.RegisterTorqrpcServer(srv.srv, &srv)
+	torqrpc.RegisterTorqrpcServer(srv.Srv, &srv)
 
 	return srv, nil
 }
@@ -62,8 +62,8 @@ func (s *torqGrpc) StartWeb() error {
 			" Accept-Encoding, X-CSRF-Token, XMLHttpRequest, x-user-agent, x-grpc-web, "+
 			"grpc-status, grpc-message")
 
-		if s.wsrv.IsGrpcWebRequest(req) || s.wsrv.IsAcceptableGrpcCorsRequest(req) {
-			s.wsrv.ServeHTTP(resp, req)
+		if s.Wsrv.IsGrpcWebRequest(req) || s.Wsrv.IsAcceptableGrpcCorsRequest(req) {
+			s.Wsrv.ServeHTTP(resp, req)
 		}
 	})
 
@@ -87,9 +87,9 @@ func (s *torqGrpc) StartGrpc() error {
 
 	// TODO: Replace with log
 	fmt.Printf("gRPC server listening on: %s:%s \n", s.host, s.port)
-	err = s.srv.Serve(lis)
+	err = s.Srv.Serve(lis)
 	if err != nil {
-		return errors.Wrapf(err, "srv.Serve(%v)", lis)
+		return errors.Wrapf(err, "Srv.Serve(%v)", lis)
 	}
 
 	return nil
