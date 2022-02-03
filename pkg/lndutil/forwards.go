@@ -145,49 +145,47 @@ func SubscribeForwardingEvents(ctx context.Context, client lightningClientForwar
 	if (opt != nil) && (opt.Tick != nil) {
 		ticker = opt.Tick
 	}
-
 	// Request the forwarding history at the requested interval.
 	// NB!: This timer is slowly being shifted because of the time required to
 	//fetch and store the response.
-shutDown:
-	for range ticker {
+	for {
 		// Exit if canceled
 		select {
 		case <-ctx.Done():
-			break shutDown
-		default:
-		}
+			return ctx.Err()
+		case <-ticker:
 
-		// Fetch the nanosecond timestamp of the most recent record we have.
-		lastNs, err := fetchLastForwardTime(db)
-		lastTimestamp := lastNs / uint64(time.Second)
-		if err != nil {
-			return errors.Wrapf(err, "SubscribeForwardingEvents->fetchLastForwardTime(%v)", db)
-		}
-
-		// Keep fetching until LND returns less than the max number of records requested.
-	fetchAll:
-		for {
-			fwh, err := fetchForwardingHistory(ctx, client, lastTimestamp, me)
+			// Fetch the nanosecond timestamp of the most recent record we have.
+			lastNs, err := fetchLastForwardTime(db)
+			lastTimestamp := lastNs / uint64(time.Second)
 			if err != nil {
-				return errors.Wrapf(err, "SubscribeForwardingEvents->fetchForwardingHistory(%v, "+
-					"%v, %v, %v"+
-					")", ctx, client, lastTimestamp, me)
+				return errors.Wrapf(err, "SubscribeForwardingEvents->fetchLastForwardTime(%v)", db)
 			}
 
-			// Store the forwarding history
-			err = storeForwardingHistory(db, fwh.ForwardingEvents)
-			if err != nil {
-				return errors.Wrapf(err, "SubscribeForwardingEvents->storeForwardingHistory(%v, "+
-					"%v)", db, fwh.ForwardingEvents)
-			}
+			// Keep fetching until LND returns less than the max number of records requested.
+		fetchAll:
+			for {
+				fwh, err := fetchForwardingHistory(ctx, client, lastTimestamp, me)
+				if err != nil {
+					return errors.Wrapf(err, "SubscribeForwardingEvents->fetchForwardingHistory(%v, "+
+						"%v, %v, %v"+
+						")", ctx, client, lastTimestamp, me)
+				}
 
-			// Stop fetching if there are fewer forwards than max requested
-			// (indicates that we have the last forwarding record)
-			if len(fwh.ForwardingEvents) < me {
-				break fetchAll
-			}
+				// Store the forwarding history
+				err = storeForwardingHistory(db, fwh.ForwardingEvents)
+				if err != nil {
+					return errors.Wrapf(err, "SubscribeForwardingEvents->storeForwardingHistory(%v, "+
+						"%v)", db, fwh.ForwardingEvents)
+				}
 
+				// Stop fetching if there are fewer forwards than max requested
+				// (indicates that we have the last forwarding record)
+				if len(fwh.ForwardingEvents) < me {
+					break fetchAll
+				}
+
+			}
 		}
 	}
 

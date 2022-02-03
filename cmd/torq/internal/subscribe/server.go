@@ -15,7 +15,7 @@ import (
 // fetches data as needed and stores it in the database.
 // It is meant to run as a background task / daemon and is the bases for all
 // of Torqs data collection
-func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
+func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 
 	router := routerrpc.NewRouterClient(conn)
 	client := lnrpc.NewLightningClient(conn)
@@ -26,12 +26,11 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 	//   https://www.fullstory.com/blog/why-errgroup-withcontext-in-golang-server-handlers/
 	// TODO: Also consider using the same context used by the gRPC connection from Golang and the
 	//   gRPC server of Torq
-	ctx := context.Background()
 	errs, ctx := errgroup.WithContext(ctx)
 
 	// HTLC events
 	errs.Go(func() error {
-		err := lndutil.SubscribeAndStoreHtlcEvents(router, db)
+		err := lndutil.SubscribeAndStoreHtlcEvents(ctx, router, db)
 		if err != nil {
 			return errors.Wrapf(err, "Start->SubscribeAndStoreHtlcEvents(%v, %v)", router, db)
 		}
@@ -40,7 +39,7 @@ func Start(conn *grpc.ClientConn, db *sqlx.DB) error {
 
 	// Channel Events
 	errs.Go(func() error {
-		err := lndutil.SubscribeAndStoreChannelEvents(client, db)
+		err := lndutil.SubscribeAndStoreChannelEvents(ctx, client, db)
 		if err != nil {
 			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v)", router, db)
 		}

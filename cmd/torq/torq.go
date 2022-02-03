@@ -168,7 +168,7 @@ func main() {
 			// Subscribe to data from the node
 			//   TODO: Attempt to restart subscriptions if they fail.
 			errs.Go(func() error {
-				err = subscribe.Start(conn, db)
+				err = subscribe.Start(ctx, conn, db)
 				if err != nil {
 					return err
 				}

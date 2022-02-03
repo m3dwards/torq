@@ -35,15 +35,20 @@ func storeHTLCEvent(db *sqlx.DB, h *routerrpc.HtlcEvent) error {
 // SubscribeAndStoreHtlcEvents subscribes to HTLC events from LND and stores them in the database as time series.
 // NB: LND has marked HTLC event streaming as experimental. Delivery is not guaranteed, so dataset might not be complete
 // HTLC events is primarily used to diagnose how good a channel / node is. And if the channel allocation should change.
-func SubscribeAndStoreHtlcEvents(router routerrpc.RouterClient, db *sqlx.DB) error {
+func SubscribeAndStoreHtlcEvents(ctx context.Context, router routerrpc.RouterClient, db *sqlx.DB) error {
 
-	ctx := context.Background()
 	htlcStream, err := router.SubscribeHtlcEvents(ctx, &routerrpc.SubscribeHtlcEventsRequest{})
 	if err != nil {
 		return fmt.Errorf("SubscribeAndStoreHtlcEvents -> SubscribeHtlcEvents(): %v", err)
 	}
 
 	for {
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 
 		htlcEvent, err := htlcStream.Recv()
 		if err == io.EOF {
