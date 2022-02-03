@@ -1,0 +1,5 @@
+ALTER TABLE channel_event
+DROP COLUMN imported;
+
+ALTER TABLE channel_event
+ALTER COLUMN event_type TYPE VARCHAR(22) USING (event_type::VARCHAR(22));

@@ -1,5 +1,5 @@
 <svelte:head>
-    <title>LNC Dashboard</title>
+    <title>Torq</title>
 </svelte:head>
 
 <div class="index-page">
