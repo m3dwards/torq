@@ -1,8 +1,13 @@
 package lndutil
 
 import (
+	"context"
 	"fmt"
+	"google.golang.org/grpc/grpclog"
+	"io"
 	"io/ioutil"
+	"os"
+	"time"
 
 	"github.com/lightningnetwork/lnd/macaroons"
 	"google.golang.org/grpc"
@@ -10,8 +15,16 @@ import (
 	"gopkg.in/macaroon.v2"
 )
 
+var (
+	err  = os.Stderr
+	warn = os.Stderr
+	info = io.Discard
+)
+
 // Connect connects to LND using gRPC.
 func Connect(host, tlsCertPath, macaroonPath string) (*grpc.ClientConn, error) {
+
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(info, warn, err))
 
 	tlsCreds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
 	if err != nil {
@@ -34,12 +47,17 @@ func Connect(host, tlsCertPath, macaroonPath string) (*grpc.ClientConn, error) {
 	}
 
 	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(tlsCreds),
+		grpc.WithReturnConnectionError(),
+		grpc.FailOnNonTempDialError(true),
 		grpc.WithBlock(),
+		grpc.WithTransportCredentials(tlsCreds),
 		grpc.WithPerRPCCredentials(macCred),
 	}
 
-	conn, err := grpc.Dial(host, opts...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, host, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial to lnd: %v", err)
 	}
