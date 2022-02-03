@@ -179,12 +179,31 @@ func main() {
 				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
 
 			// Starts the grpc server
-			errs.Go(srv.StartGrpc)
+			errs.Go(func() error {
+				err := srv.StartGrpc()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 
 			// Starts the grpc-web proxy server
-			errs.Go(srv.StartWeb)
+			errs.Go(func() error {
+				err := srv.StartWeb()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 
-			return errs.Wait()
+			err = errs.Wait()
+			if err != nil {
+				fmt.Printf("trying to exit")
+				srv.Srv.Stop()
+				return err
+			}
+
+			return nil
 		},
 	}
 
