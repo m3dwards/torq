@@ -1,0 +1,338 @@
+package lndutil
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/cockroachdb/errors"
+	"github.com/jmoiron/sqlx"
+	"github.com/lightningnetwork/lnd/lnrpc"
+	"io"
+	"time"
+)
+
+func getChanPoint(cb []byte, oi uint32) (string, error) {
+	ch, err := chainhash.NewHash(cb)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s:%d", ch.String(), oi), nil
+}
+
+// storeChannelEvent extracts the timestamp, channel ID and PubKey from the
+// ChannelEvent and converts the original struct to json.
+// Then it's stored in the database in the channel_event table.
+func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate) error {
+
+	jb, err := json.Marshal(ce)
+	if err != nil {
+		return fmt.Errorf("storeChannelEvent -> json.Marshal(%v): %v", ce, err)
+	}
+
+	timestampMs := time.Now()
+
+	var ChanID uint64
+	var ChannelPoint string
+	var PubKey string
+
+	switch ce.Type {
+	case lnrpc.ChannelEventUpdate_OPEN_CHANNEL:
+		c := ce.GetOpenChannel()
+		ChanID = c.ChanId
+		ChannelPoint = c.ChannelPoint
+		PubKey = c.RemotePubkey
+	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL:
+		c := ce.GetClosedChannel()
+		ChanID = c.ChanId
+		ChannelPoint = c.ChannelPoint
+		PubKey = c.RemotePubkey
+	case lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
+		c := ce.GetFullyResolvedChannel()
+		ChannelPoint, err = getChanPoint(c.GetFundingTxidBytes(), c.GetOutputIndex())
+		if err != nil {
+			return err
+		}
+	case lnrpc.ChannelEventUpdate_ACTIVE_CHANNEL:
+		c := ce.GetActiveChannel()
+		ChannelPoint, err = getChanPoint(c.GetFundingTxidBytes(), c.GetOutputIndex())
+		if err != nil {
+			return err
+		}
+	case lnrpc.ChannelEventUpdate_INACTIVE_CHANNEL:
+		c := ce.GetInactiveChannel()
+		ChannelPoint, err = getChanPoint(c.GetFundingTxidBytes(), c.GetOutputIndex())
+		if err != nil {
+			return err
+		}
+	case lnrpc.ChannelEventUpdate_PENDING_OPEN_CHANNEL:
+		c := ce.GetPendingOpenChannel()
+		ChannelPoint, err = getChanPoint(c.GetTxid(), c.GetOutputIndex())
+		if err != nil {
+			return err
+		}
+	default:
+		// TODO: Need to improve error handling and logging in the case of unknown event.
+		//  Simply storing the event without any link to a channel.
+	}
+
+	err = insertChannelEvent(db, timestampMs, ce.Type, false, ChanID, ChannelPoint, PubKey, jb)
+	if err != nil {
+		return errors.Wrapf(err, `storeChannelEvent -> insertChannelEventExec(%v, %s, %s, %t, %d, %s, %s, %v)`,
+			db, timestampMs, ce.Type, false, ChanID, ChannelPoint, PubKey, jb)
+	}
+
+	return nil
+}
+
+// SubscribeAndStoreChannelEvents Subscribes to channel events from LND and stores them in the
+// database as a time series
+func SubscribeAndStoreChannelEvents(ctx context.Context, client lnrpc.LightningClient, db *sqlx.DB) error {
+
+	err := importChannelList(lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
+	if err != nil {
+		fmt.Println(err)
+		return errors.Wrapf(err, "SubscribeAndStoreChannelEvents -> importChannelList(%s, %v, %v)",
+			lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
+	}
+
+	err = importChannelList(lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, client)
+	if err != nil {
+		fmt.Println(err)
+		return errors.Wrapf(err, "SubscribeAndStoreChannelEvents -> importChannelList(%s, %v, %v)",
+			lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, client)
+	}
+
+	cesr := lnrpc.ChannelEventSubscription{}
+	stream, err := client.SubscribeChannelEvents(ctx, &cesr)
+	if err != nil {
+		return errors.Wrapf(err, "SubscribeAndStoreChannelEvents -> client.SubscribeChannelEvents(%v, %v)",
+			ctx, cesr)
+	}
+
+	for {
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		chanEvent, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.Wrap(err, "SubscribeChannelEvents -> stream.Recv()")
+		}
+
+		err = storeChannelEvent(db, chanEvent)
+		if err != nil {
+			return errors.Wrapf(err, "storeChannelEvent(%v, %v)", db, client)
+		}
+
+	}
+
+	return nil
+}
+
+func importChannelList(t lnrpc.ChannelEventUpdate_UpdateType, db *sqlx.DB, client lnrpc.LightningClient) error {
+
+	ctx := context.Background()
+	switch t {
+	case lnrpc.ChannelEventUpdate_OPEN_CHANNEL:
+		req := lnrpc.ListChannelsRequest{}
+		r, err := client.ListChannels(ctx, &req)
+		if err != nil {
+			return errors.Wrapf(err, "client.ListChannels(%v, %v)", req)
+		}
+
+		err = storeImportedOpenChannels(db, r.Channels)
+		if err != nil {
+			return errors.Wrapf(err, "storeImportedOpenChannels(%v, jb)", db)
+		}
+
+	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL:
+		req := lnrpc.ClosedChannelsRequest{}
+		r, err := client.ClosedChannels(ctx, &req)
+		if err != nil {
+			return errors.Wrapf(err, "client.ClosedChannels(%v, %v)", req)
+		}
+
+		err = storeImportedClosedChannels(db, r.Channels)
+		if err != nil {
+			return errors.Wrapf(err, "storeImportedClosedChannels(%v, jb)", db)
+		}
+
+	}
+
+	return nil
+}
+
+func getExistingChannelEvents(t lnrpc.ChannelEventUpdate_UpdateType, db *sqlx.DB, cp []string) ([]string, error) {
+
+	// Prepare the query with an array of channel points
+	q := "select chan_point from channel_event where (chan_point in (?)) and (event_type = ?);"
+	qs, args, err := sqlx.In(q, cp, t)
+	if err != nil {
+		return []string{}, errors.Wrapf(err, "sqlx.In(%s, %v, %d)", q, cp, t)
+	}
+
+	// Query and create the list of existing channel points (ecp)
+	var ecp []string
+	qsr := db.Rebind(qs)
+	rows, err := db.Query(qsr, args...)
+	if err != nil {
+		return []string{}, errors.Wrapf(err, "getExistingChannelEvents -> db.Query(qsr, args...)")
+	}
+	for rows.Next() {
+		var cp sql.NullString
+		err = rows.Scan(&cp)
+		if err != nil {
+			return nil, err
+		}
+		if cp.Valid {
+			ecp = append(ecp, cp.String)
+		}
+	}
+
+	return ecp, nil
+}
+
+//type mempoolResp struct {
+//	blockTime int64 `json:"blocktime"`
+//}
+
+//func getEstimatedTxTime(txId string) (time.Time, error) {
+//
+//	app := "bitcoin-cli getrawtransaction"
+//	arg0 := txId
+//	arg1 := "true"
+//
+//	cmd := exec.Command(app, arg0, arg1)
+//	stdout, err := cmd.Output()
+//
+//	if err != nil {
+//		return time.Time{}, err
+//	}
+//
+//	var t = mempoolResp{}
+//	err = json.Unmarshal(stdout, &t)
+//	if err != nil {
+//		return time.Time{}, err
+//	}
+//
+//	return time.Unix(t.blockTime, 0), nil
+//
+//}
+
+func enrichAndInsertChannelEvent(db *sqlx.DB, eventType lnrpc.ChannelEventUpdate_UpdateType, imported bool, chanId uint64, chanPoint string, pubKey string, jb []byte) error {
+
+	//timestampMs, err := getEstimatedTxTime(strings.TrimSuffix(chanPoint, ":1"))
+	//if err != nil {
+	//	return err
+	//}
+
+	timestampMs := time.Now()
+
+	err := insertChannelEvent(db, timestampMs, eventType, imported, chanId, chanPoint, pubKey, jb)
+	if err != nil {
+		return errors.Wrapf(err, "storeChannelOpenList -> "+
+			"insertChannelEventExec(%v, %s, %s, %t, %d, %s, %s, %v)",
+			db, timestampMs, eventType, imported, chanId, chanPoint, pubKey, jb)
+	}
+	return nil
+}
+
+func storeImportedOpenChannels(db *sqlx.DB, c []*lnrpc.Channel) error {
+
+	// Creates a list of channel points in the request result.
+	var cp []string
+	for _, channel := range c {
+		cp = append(cp, channel.ChannelPoint)
+	}
+
+	ecp, err := getExistingChannelEvents(lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, cp)
+	if err != nil {
+		return err
+	}
+
+icoLoop:
+	for _, channel := range c {
+
+		for _, e := range ecp {
+			if channel.ChannelPoint == e {
+				continue icoLoop
+			}
+		}
+
+		jb, err := json.Marshal(channel)
+		if err != nil {
+			return errors.Wrapf(err, "storeChannelList -> json.Marshal(%v)", channel)
+		}
+
+		err = enrichAndInsertChannelEvent(db, lnrpc.ChannelEventUpdate_OPEN_CHANNEL,
+			true, channel.ChanId, channel.ChannelPoint, channel.RemotePubkey, jb)
+		if err != nil {
+			return errors.Wrapf(err, "storeChannelOpenList -> "+
+				"enrichAndInsertChannelEvent(%v, %s, %s, %t, %d, %s, %s, %v)", db,
+				lnrpc.ChannelEventUpdate_OPEN_CHANNEL, true, channel.ChanId, channel.ChannelPoint,
+				channel.RemotePubkey, jb)
+		}
+	}
+	return nil
+}
+
+func storeImportedClosedChannels(db *sqlx.DB, c []*lnrpc.ChannelCloseSummary) error {
+
+	// Creates a list of channel points in the request result.
+	var cp []string
+	for _, channel := range c {
+		cp = append(cp, channel.ChannelPoint)
+	}
+
+	ecp, err := getExistingChannelEvents(lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, cp)
+	if err != nil {
+		return err
+	}
+
+icoLoop:
+	for _, channel := range c {
+
+		for _, e := range ecp {
+			if channel.ChannelPoint == e {
+				continue icoLoop
+			}
+		}
+
+		jb, err := json.Marshal(channel)
+		if err != nil {
+			return errors.Wrapf(err, "storeChannelList -> json.Marshal(%v)", channel)
+		}
+
+		err = enrichAndInsertChannelEvent(db, lnrpc.ChannelEventUpdate_OPEN_CHANNEL,
+			true, channel.ChanId, channel.ChannelPoint, channel.RemotePubkey, jb)
+		if err != nil {
+			return errors.Wrapf(err, "storeChannelOpenList -> "+
+				"enrichAndInsertChannelEvent(%v, %s, %s, %t, %d, %s, %s, %v)", db,
+				lnrpc.ChannelEventUpdate_OPEN_CHANNEL, true, channel.ChanId, channel.ChannelPoint,
+				channel.RemotePubkey, jb)
+		}
+	}
+	return nil
+}
+
+var sqlStm = `INSERT INTO channel_event (time, event_type, imported, chan_id, chan_point, pub_key, 
+	event) VALUES($1, $2, $3, $4, $5, $6, $7);`
+
+func insertChannelEvent(db *sqlx.DB, ts time.Time, eventType lnrpc.ChannelEventUpdate_UpdateType,
+	imported bool, chanId uint64, chanPoint string, pubKey string, jb []byte) error {
+	_, err := db.Exec(sqlStm, ts, eventType, imported, chanId, chanPoint, pubKey, jb)
+	if err != nil {
+		return errors.Wrapf(err, `insertChannelEvent -> db.Exec(%s, %s, %s, %t, %d, %s, %s, jb)`,
+			sqlStm, ts, eventType, imported, chanId, chanPoint, pubKey, jb)
+	}
+	return nil
+}
