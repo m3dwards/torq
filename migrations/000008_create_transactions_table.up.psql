@@ -1,0 +1,28 @@
+CREATE TABLE tx (
+    timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    tx_hash text,
+    amount numeric,
+    num_confirmations	bigint,
+    block_hash	text,
+    block_height	bigint,
+    total_fees	numeric,
+    dest_addresses text[],
+    raw_tx_hex	text,
+    label	text,
+     UNIQUE (timestamp, tx_hash)
+
+);
+
+-- Turn into hypertable
+SELECT create_hypertable('tx','timestamp');
+
+
+comment on column tx.timestamp is 'Timestamp of this transaction. Also the index used by TimescaleDB';
+comment on column tx.tx_hash is 'The transaction hash';
+comment on column tx.amount is 'The transaction amount, denominated in satoshis';
+comment on column tx.num_confirmations is 'The number of confirmations';
+comment on column tx.block_hash is 'The hash of the block this transaction was included in';
+comment on column tx.block_height is 'The height of the block this transaction was included in';
+comment on column tx.total_fees is 'Fees paid for this transaction';
+comment on column tx.dest_addresses is 'Addresses that received funds for this transaction';
+comment on column tx.raw_tx_hex is 'The raw transaction hex.';

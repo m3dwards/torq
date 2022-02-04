@@ -28,6 +28,15 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	//   gRPC server of Torq
 	errs, ctx := errgroup.WithContext(ctx)
 
+	// Transactions
+	errs.Go(func() error {
+		err := lndutil.SubscribeAndStoreTransactions(ctx, client, db)
+		if err != nil {
+			return errors.Wrapf(err, "Start->SubscribeAndStoreTransactions(%v, %v, %v)", ctx, client, db)
+		}
+		return nil
+	})
+
 	// HTLC events
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreHtlcEvents(ctx, router, db)

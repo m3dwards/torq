@@ -201,40 +201,10 @@ func getExistingChannelEvents(t lnrpc.ChannelEventUpdate_UpdateType, db *sqlx.DB
 	return ecp, nil
 }
 
-//type mempoolResp struct {
-//	blockTime int64 `json:"blocktime"`
-//}
-
-//func getEstimatedTxTime(txId string) (time.Time, error) {
-//
-//	app := "bitcoin-cli getrawtransaction"
-//	arg0 := txId
-//	arg1 := "true"
-//
-//	cmd := exec.Command(app, arg0, arg1)
-//	stdout, err := cmd.Output()
-//
-//	if err != nil {
-//		return time.Time{}, err
-//	}
-//
-//	var t = mempoolResp{}
-//	err = json.Unmarshal(stdout, &t)
-//	if err != nil {
-//		return time.Time{}, err
-//	}
-//
-//	return time.Unix(t.blockTime, 0), nil
-//
-//}
-
 func enrichAndInsertChannelEvent(db *sqlx.DB, eventType lnrpc.ChannelEventUpdate_UpdateType, imported bool, chanId uint64, chanPoint string, pubKey string, jb []byte) error {
 
-	//timestampMs, err := getEstimatedTxTime(strings.TrimSuffix(chanPoint, ":1"))
-	//if err != nil {
-	//	return err
-	//}
-
+	// Use current time for imported channel events (open/close).
+	// The time used to open/close events is the timestamp of the opening transaction.
 	timestampMs := time.Now()
 
 	err := insertChannelEvent(db, timestampMs, eventType, imported, chanId, chanPoint, pubKey, jb)
