@@ -41,7 +41,7 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreHtlcEvents(ctx, router, db)
 		if err != nil {
-			return errors.Wrapf(err, "Start->SubscribeAndStoreHtlcEvents(%v, %v)", router, db)
+			return errors.Wrapf(err, "Start->SubscribeAndStoreHtlcEvents(%v, %v, %v)", ctx, router, db)
 		}
 		return nil
 	})
@@ -50,7 +50,7 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreChannelEvents(ctx, client, db)
 		if err != nil {
-			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v)", router, db)
+			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v, %v)", ctx, router, db)
 		}
 		return nil
 	})
