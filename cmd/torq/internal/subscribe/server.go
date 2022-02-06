@@ -2,6 +2,7 @@ package subscribe
 
 import (
 	"context"
+	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -28,11 +29,51 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	//   gRPC server of Torq
 	errs, ctx := errgroup.WithContext(ctx)
 
+	// Import Open channels
+	err := lndutil.ImportChannelList(lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
+	if err != nil {
+		fmt.Println(err)
+		return errors.Wrapf(err, "Start -> importChannelList(%s, %v, %v)",
+			lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
+	}
+
+	// Import Closed channels
+	err = lndutil.ImportChannelList(lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, client)
+	if err != nil {
+		fmt.Println(err)
+		return errors.Wrapf(err, "Start -> importChannelList(%s, %v, %v)",
+			lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, client)
+	}
+
+	// Import Node info (based on channels)
+	err = lndutil.ImportMissingNodeEvents(client, db)
+	if err != nil {
+		fmt.Println(err)
+		return errors.Wrapf(err, "Start -> ImportMissingNodeEvents(%v, %v)", client, db)
+	}
+
+	pubKeyChan := make(chan string)
+
+	// Initialize the peer list
+	lndutil.InitPeerList(db)
+
+	// Start listening for updates
+	go lndutil.UpdatePeerList(pubKeyChan)
+
 	// Transactions
 	errs.Go(func() error {
 		err := lndutil.SubscribeAndStoreTransactions(ctx, client, db)
 		if err != nil {
 			return errors.Wrapf(err, "Start->SubscribeAndStoreTransactions(%v, %v, %v)", ctx, client, db)
+		}
+		return nil
+	})
+
+	// Graph (Node updates, fee updates etc.)
+	errs.Go(func() error {
+		err := lndutil.SubscribeAndStoreChannelGraph(ctx, client, db)
+		if err != nil {
+			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelGraph(%v, %v, %v)", ctx, client, db)
 		}
 		return nil
 	})
@@ -48,7 +89,7 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 
 	// Channel Events
 	errs.Go(func() error {
-		err := lndutil.SubscribeAndStoreChannelEvents(ctx, client, db)
+		err := lndutil.SubscribeAndStoreChannelEvents(ctx, client, db, pubKeyChan)
 		if err != nil {
 			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v, %v)", ctx, router, db)
 		}
