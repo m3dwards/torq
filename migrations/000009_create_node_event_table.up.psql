@@ -1,0 +1,18 @@
+CREATE TABLE node_event (
+    timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    pub_key	TEXT,
+    alias	TEXT,
+    color	TEXT,
+    node_addresses	JSONB,
+    features	JSONB
+);
+
+-- Turn into hypertable
+SELECT create_hypertable('node_event','timestamp');
+
+comment on column node_event.timestamp is 'Timestamp of this node update event. Also the index used by TimescaleDB';
+comment on column node_event.pub_key is 'The public key';
+comment on column node_event.alias is 'The alias associated with this node';
+comment on column node_event.color is 'the color associated with this node';
+comment on column node_event.node_addresses is 'List of node addresses and and network type (i.e. tcp)';
+comment on column node_event.features is 'List of features that this node supports';
