@@ -1,0 +1,28 @@
+CREATE TABLE routing_policy (
+    ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    chan_id numeric not null,
+    announcing_pub_key text,
+    chan_point TEXT not null,
+    outbound bool not null,
+    disabled bool,
+    time_lock_delta bigint,
+    min_htlc numeric,
+    max_htlc_msat numeric,
+    fee_base_msat numeric,
+    fee_rate_mill_msat numeric
+);
+
+-- Turn into hypertable
+SELECT create_hypertable('routing_policy','ts');
+
+comment on column routing_policy.ts is 'Timestamp of this routing policy update. Also the index used by TimescaleDB';
+comment on column routing_policy.chan_id is 'The channel ID';
+comment on column routing_policy.announcing_pub_key is 'Public key of the node that updated its routing policy';
+comment on column routing_policy.chan_point is 'The transaction id and input index of the channel';
+comment on column routing_policy.outbound is 'True means that the routing policy is set by our node.';
+comment on column routing_policy.disabled is 'If the channel is disabled by the node';
+comment on column routing_policy.time_lock_delta is 'Time out of the HTLC';
+comment on column routing_policy.min_htlc is 'The maximum amount forwarded in a single transaction';
+comment on column routing_policy.max_htlc_msat is 'The maximum amount forwarded in a single transaction in milli satoshi';
+comment on column routing_policy.fee_base_msat is 'The base fee in milli satoshi';
+comment on column routing_policy.fee_rate_mill_msat is 'The fee rate in milli satoshi';
