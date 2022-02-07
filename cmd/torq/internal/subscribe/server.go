@@ -52,13 +52,31 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 		return errors.Wrapf(err, "Start -> ImportMissingNodeEvents(%v, %v)", client, db)
 	}
 
+	// Get the public key of our node
+	ni, err := client.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+	if err != nil {
+		return errors.Wrapf(err, "start -> client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{})")
+	}
+	lndutil.InitOurNodesList([]string{ni.IdentityPubkey})
+
 	pubKeyChan := make(chan string)
+	chanPointChan := make(chan string)
 
 	// Initialize the peer list
-	lndutil.InitPeerList(db)
+	err = lndutil.InitPeerList(db)
+	if err != nil {
+		return errors.Wrapf(err, "start -> InitPeerList(%v)", db)
+	}
+
+	// Initialize the channel id list
+	err = lndutil.InitChanIdList(db)
+	if err != nil {
+		return errors.Wrapf(err, "start -> InitChanIdList(%v)", db)
+	}
 
 	// Start listening for updates
 	go lndutil.UpdatePeerList(pubKeyChan)
+	go lndutil.UpdateChanIdList(chanPointChan)
 
 	// Transactions
 	errs.Go(func() error {
@@ -89,7 +107,7 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 
 	// Channel Events
 	errs.Go(func() error {
-		err := lndutil.SubscribeAndStoreChannelEvents(ctx, client, db, pubKeyChan)
+		err := lndutil.SubscribeAndStoreChannelEvents(ctx, client, db, pubKeyChan, chanPointChan)
 		if err != nil {
 			return errors.Wrapf(err, "Start->SubscribeAndStoreChannelEvents(%v, %v, %v)", ctx, router, db)
 		}
