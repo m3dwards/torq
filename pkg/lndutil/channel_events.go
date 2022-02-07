@@ -25,7 +25,8 @@ func getChanPoint(cb []byte, oi uint32) (string, error) {
 // storeChannelEvent extracts the timestamp, channel ID and PubKey from the
 // ChannelEvent and converts the original struct to json.
 // Then it's stored in the database in the channel_event table.
-func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate, pubKeyChan chan string) error {
+func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate,
+	pubKeyChan chan string, chanIdChan chan string) error {
 
 	jb, err := json.Marshal(ce)
 	if err != nil {
@@ -47,6 +48,7 @@ func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate, pubKeyChan cha
 
 		// Add the remote public key to the list to listen to for graph updates.
 		pubKeyChan <- c.RemotePubkey
+		chanIdChan <- c.ChannelPoint
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL:
 		c := ce.GetClosedChannel()
 		ChanID = c.ChanId
@@ -92,7 +94,8 @@ func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate, pubKeyChan cha
 
 // SubscribeAndStoreChannelEvents Subscribes to channel events from LND and stores them in the
 // database as a time series
-func SubscribeAndStoreChannelEvents(ctx context.Context, client lnrpc.LightningClient, db *sqlx.DB, pubKeyChan chan string) error {
+func SubscribeAndStoreChannelEvents(ctx context.Context, client lnrpc.LightningClient,
+	db *sqlx.DB, pubKeyChan chan string, chanPoinChan chan string) error {
 
 	cesr := lnrpc.ChannelEventSubscription{}
 	stream, err := client.SubscribeChannelEvents(ctx, &cesr)
@@ -117,7 +120,7 @@ func SubscribeAndStoreChannelEvents(ctx context.Context, client lnrpc.LightningC
 			return errors.Wrap(err, "SubscribeChannelEvents -> stream.Recv()")
 		}
 
-		err = storeChannelEvent(db, chanEvent, pubKeyChan)
+		err = storeChannelEvent(db, chanEvent, pubKeyChan, chanPoinChan)
 		if err != nil {
 			return errors.Wrapf(err, "storeChannelEvent(%v, %v)", db, client)
 		}
