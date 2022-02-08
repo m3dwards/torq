@@ -26,7 +26,7 @@ func getChanPoint(cb []byte, oi uint32) (string, error) {
 // ChannelEvent and converts the original struct to json.
 // Then it's stored in the database in the channel_event table.
 func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate,
-	pubKeyChan chan string, chanIdChan chan string) error {
+	pubKeyChan chan string, chanPointChan chan string) error {
 
 	jb, err := json.Marshal(ce)
 	if err != nil {
@@ -48,12 +48,18 @@ func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate,
 
 		// Add the remote public key to the list to listen to for graph updates.
 		pubKeyChan <- c.RemotePubkey
-		chanIdChan <- c.ChannelPoint
+
+		// Add the channel point to the chanPointList, this allows the
+		// channel graph to listen for routing policy updates
+		chanPointChan <- c.ChannelPoint
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL:
 		c := ce.GetClosedChannel()
 		ChanID = c.ChanId
 		ChannelPoint = c.ChannelPoint
 		PubKey = c.RemotePubkey
+
+		// Updates the channel point list by removing the channel point from the chanPointList.
+		chanPointChan <- c.ChannelPoint
 	case lnrpc.ChannelEventUpdate_FULLY_RESOLVED_CHANNEL:
 		c := ce.GetFullyResolvedChannel()
 		ChannelPoint, err = getChanPoint(c.GetFundingTxidBytes(), c.GetOutputIndex())
