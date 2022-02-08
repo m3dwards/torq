@@ -280,12 +280,12 @@ icoLoop:
 			return errors.Wrapf(err, "storeChannelList -> json.Marshal(%v)", channel)
 		}
 
-		err = enrichAndInsertChannelEvent(db, lnrpc.ChannelEventUpdate_OPEN_CHANNEL,
+		err = enrichAndInsertChannelEvent(db, lnrpc.ChannelEventUpdate_CLOSED_CHANNEL,
 			true, channel.ChanId, channel.ChannelPoint, channel.RemotePubkey, jb)
 		if err != nil {
 			return errors.Wrapf(err, "storeChannelOpenList -> "+
 				"enrichAndInsertChannelEvent(%v, %s, %s, %t, %d, %s, %s, %v)", db,
-				lnrpc.ChannelEventUpdate_OPEN_CHANNEL, true, channel.ChanId, channel.ChannelPoint,
+				lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, true, channel.ChanId, channel.ChannelPoint,
 				channel.RemotePubkey, jb)
 		}
 	}
