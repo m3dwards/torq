@@ -7,7 +7,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/lncapital/torq/build"
 	"github.com/lncapital/torq/cmd/torq/internal/subscribe"
-	"github.com/lncapital/torq/cmd/torq/internal/torqsrv"
 	"github.com/lncapital/torq/migrations"
 	"github.com/lncapital/torq/pkg/database"
 	"github.com/lncapital/torq/pkg/lndutil"
@@ -175,35 +174,35 @@ func main() {
 				return nil
 			})
 
-			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
-				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
+			//srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
+			//	c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
 
-			// Starts the grpc server
-			errs.Go(func() error {
-				err := srv.StartGrpc()
-				if err != nil {
-					return err
-				}
-				return nil
-			})
+			//// Starts the grpc server
+			//errs.Go(func() error {
+			//	err := srv.StartGrpc()
+			//	if err != nil {
+			//		return err
+			//	}
+			//	return nil
+			//})
+			//
+			//// Starts the grpc-web proxy server
+			//errs.Go(func() error {
+			//	err := srv.StartWeb()
+			//	if err != nil {
+			//		return err
+			//	}
+			//	return nil
+			//})
 
-			// Starts the grpc-web proxy server
-			errs.Go(func() error {
-				err := srv.StartWeb()
-				if err != nil {
-					return err
-				}
-				return nil
-			})
+			//err = errs.Wait()
+			//if err != nil {
+			//	fmt.Printf("trying to exit")
+			//	srv.Srv.Stop()
+			//	return err
+			//}
 
-			err = errs.Wait()
-			if err != nil {
-				fmt.Printf("trying to exit")
-				srv.Srv.Stop()
-				return err
-			}
-
-			return nil
+			return errs.Wait()
 		},
 	}
 

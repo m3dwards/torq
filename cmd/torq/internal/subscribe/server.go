@@ -29,10 +29,18 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	//   gRPC server of Torq
 	errs, ctx := errgroup.WithContext(ctx)
 
-	// Import Open channels
-	err := lndutil.ImportChannelList(lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
+	// Get the public key of our node
+	ni, err := client.GetInfo(ctx, &lnrpc.GetInfoRequest{})
 	if err != nil {
-		fmt.Println(err)
+		return errors.Wrapf(err, "start -> client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{})")
+	}
+
+	// Store a list of public keys belonging to our nodes
+	lndutil.InitOurNodesList([]string{ni.IdentityPubkey})
+
+	// Import Open channels
+	err = lndutil.ImportChannelList(lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
+	if err != nil {
 		return errors.Wrapf(err, "Start -> importChannelList(%s, %v, %v)",
 			lnrpc.ChannelEventUpdate_OPEN_CHANNEL, db, client)
 	}
@@ -40,7 +48,6 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	// Import Closed channels
 	err = lndutil.ImportChannelList(lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, client)
 	if err != nil {
-		fmt.Println(err)
 		return errors.Wrapf(err, "Start -> importChannelList(%s, %v, %v)",
 			lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, db, client)
 	}
@@ -48,19 +55,15 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 	// Import Node info (based on channels)
 	err = lndutil.ImportMissingNodeEvents(client, db)
 	if err != nil {
-		fmt.Println(err)
 		return errors.Wrapf(err, "Start -> ImportMissingNodeEvents(%v, %v)", client, db)
 	}
 
-	// Get the public key of our node
-	ni, err := client.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+	// Import routing policies from open channels
+	err = lndutil.ImportRoutingPolicies(client, db)
 	if err != nil {
-		return errors.Wrapf(err, "start -> client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{})")
+		fmt.Println(err)
+		return errors.Wrapf(err, "Start -> ImportRoutingPolicies(%v, %v)", client, db)
 	}
-	lndutil.InitOurNodesList([]string{ni.IdentityPubkey})
-
-	pubKeyChan := make(chan string)
-	chanPointChan := make(chan string)
 
 	// Initialize the peer list
 	err = lndutil.InitPeerList(db)
@@ -74,8 +77,17 @@ func Start(ctx context.Context, conn *grpc.ClientConn, db *sqlx.DB) error {
 		return errors.Wrapf(err, "start -> InitChanIdList(%v)", db)
 	}
 
-	// Start listening for updates
+	// Create a channel to update the list of public key for nodes we have
+	// or have had channels with
+	pubKeyChan := make(chan string)
+
+	// Start listening for updates to the public key list
 	go lndutil.UpdatePeerList(pubKeyChan)
+
+	// Create a channel to update the list of channel points for our currently active with
+	chanPointChan := make(chan string)
+
+	// Start listening for updates to the channel point list
 	go lndutil.UpdateChanIdList(chanPointChan)
 
 	// Transactions

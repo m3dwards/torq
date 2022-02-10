@@ -89,10 +89,11 @@ func processChannelUpdates(cus []*lnrpc.ChannelEdgeUpdate, db *sqlx.DB) error {
 		// And if one of our nodes is advertising the channel update (meaning
 		// we have changed our the channel policy).
 		ourNode := isOurNode(cu.AdvertisingNode)
-		chanPoint, err := getChanPoint(cu.ChanPoint.GetFundingTxidBytes(), cu.ChanPoint.OutputIndex)
+
+		chanPoint, err := getChanPoint(cu.ChanPoint.GetFundingTxidBytes(), cu.ChanPoint.GetOutputIndex())
 		if err != nil {
 			return errors.Wrapf(err, "SubscribeChannelEvents ->getChanPoint(%b, %d)",
-				cu.ChanPoint.GetFundingTxidBytes(), cu.ChanPoint.OutputIndex)
+				cu.ChanPoint.GetFundingTxidBytes(), cu.ChanPoint.GetOutputIndex())
 		}
 		relevantChannel := isRelevantChannel(chanPoint)
 
@@ -121,19 +122,50 @@ INSERT INTO routing_policy (ts,
 	min_htlc,
 	max_htlc_msat,
 	fee_base_msat,
-	fee_rate_mill_msat) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+	fee_rate_mill_msat)
+select $1, $2, $3,$4, $5, $6, $7, $8, $9, $10, $11
+WHERE NOT EXISTS (
+	select true 
+	from (select last(chan_id,ts) chan_id,
+			last(announcing_pub_key, ts) as announcing_pub_key,
+			last(disabled,ts) disabled,
+			last(time_lock_delta,ts) time_lock_delta,
+			last(min_htlc,ts) min_htlc,
+			last(max_htlc_msat,ts) max_htlc_msat,
+			last(fee_base_msat,ts) fee_base_msat,
+			last(fee_rate_mill_msat, ts) fee_rate_mill_msat
+		from routing_policy
+		group by chan_id, announcing_pub_key) as a
+	where a.chan_id = $12 and
+		  a.announcing_pub_key = $13 and
+		  a.disabled = $14 and
+		  a.time_lock_delta = $15 and
+		  a.min_htlc = $16 and
+		  a.max_htlc_msat = $17 and
+		  a.fee_base_msat = $18 and
+		  a.fee_rate_mill_msat = $19
+);`
 
 func insertRoutingPolicy(db *sqlx.DB, ts time.Time, outbound bool, cu *lnrpc.ChannelEdgeUpdate) error {
 
 	cp, err := getChanPoint(cu.ChanPoint.GetFundingTxidBytes(), cu.ChanPoint.GetOutputIndex())
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "insertRoutingPolicy -> getChanPoint(%v, %d)",
+			cu.ChanPoint.GetFundingTxidBytes(), cu.ChanPoint.GetOutputIndex())
 	}
 
-	db.Exec(rpQuery, ts, cu.ChanId, cu.AdvertisingNode, cp, outbound,
+	// Check if the routing policy is unchanged
+
+	_, err = db.Exec(rpQuery, ts, cu.ChanId, cu.AdvertisingNode, cp, outbound,
 		cu.RoutingPolicy.Disabled, cu.RoutingPolicy.TimeLockDelta, cu.RoutingPolicy.MinHtlc,
+		cu.RoutingPolicy.MaxHtlcMsat, cu.RoutingPolicy.FeeBaseMsat, cu.RoutingPolicy.FeeRateMilliMsat,
+		// Variables to check if it exists
+		cu.ChanId, cu.AdvertisingNode, cu.RoutingPolicy.Disabled, cu.RoutingPolicy.TimeLockDelta, cu.RoutingPolicy.MinHtlc,
 		cu.RoutingPolicy.MaxHtlcMsat, cu.RoutingPolicy.FeeBaseMsat, cu.RoutingPolicy.FeeRateMilliMsat)
+
+	if err != nil {
+		return errors.Wrapf(err, "insertRoutingPolicy -> db.Exec(%s)", rpQuery)
+	}
 
 	return nil
 }
