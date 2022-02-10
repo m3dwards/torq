@@ -152,7 +152,7 @@ func SubscribeForwardingEvents(ctx context.Context, client lightningClientForwar
 		// Exit if canceled
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case <-ticker:
 
 			// Fetch the nanosecond timestamp of the most recent record we have.

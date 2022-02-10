@@ -12,7 +12,7 @@ import (
 )
 
 // getMissingNodePubKeys creates a string slice with all the PubKey of all nodes
-// we have a channel with, but where we do not have any node event records.
+// we have a channel with but where we do not have any node event records.
 func getMissingNodePubKeys(db *sqlx.DB) ([]string, error) {
 
 	// Fetch a list of all unknown channel PubKeys by subtracting a set of all
@@ -39,11 +39,12 @@ func ImportMissingNodeEvents(client lnrpc.LightningClient, db *sqlx.DB) error {
 
 	pubKeyList, err := getMissingNodePubKeys(db)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "ImportMissingNodeEvents -> getMissingNodePubKeys(db)")
 	}
 
 	ctx := context.Background()
 	for _, p := range pubKeyList {
+		//fmt.Println(p)
 		rsp, err := client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{PubKey: p, IncludeChannels: false})
 		if err != nil {
 			if e, ok := status.FromError(err); ok {
@@ -59,7 +60,8 @@ func ImportMissingNodeEvents(client lnrpc.LightningClient, db *sqlx.DB) error {
 		err = insertNodeEvent(db, ts, rsp.Node.PubKey, rsp.Node.Alias, rsp.Node.Color,
 			rsp.Node.Addresses, rsp.Node.Features)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "ImportMissingNodeEvents -> insertNodeEvent(db, %s, %s, %s, %s, %v, %v)",
+				ts, rsp.Node.PubKey, rsp.Node.Alias, rsp.Node.Color, rsp.Node.Addresses, rsp.Node.Features)
 		}
 	}
 

@@ -150,7 +150,7 @@ func TestSubscribeForwardingEvents(t *testing.T) {
 	})
 
 	// Simulate passing intervals
-	numbTicks := 3
+	numbTicks := 4
 	for i := 0; i < numbTicks; i++ {
 
 		c.AddTime(mockTickerInterval)

@@ -14,6 +14,7 @@ import (
 )
 
 func getChanPoint(cb []byte, oi uint32) (string, error) {
+
 	ch, err := chainhash.NewHash(cb)
 	if err != nil {
 		return "", err
@@ -144,24 +145,24 @@ func ImportChannelList(t lnrpc.ChannelEventUpdate_UpdateType, db *sqlx.DB, clien
 		req := lnrpc.ListChannelsRequest{}
 		r, err := client.ListChannels(ctx, &req)
 		if err != nil {
-			return errors.Wrapf(err, "client.ListChannels(%v, %v)", req)
+			return errors.Wrapf(err, "ImportChannelList -> client.ListChannels(%v, %v)", ctx, req)
 		}
 
 		err = storeImportedOpenChannels(db, r.Channels)
 		if err != nil {
-			return errors.Wrapf(err, "storeImportedOpenChannels(%v, jb)", db)
+			return errors.Wrapf(err, "ImportChannelList -> storeImportedOpenChannels(%v, %v)", db, r.Channels)
 		}
 
 	case lnrpc.ChannelEventUpdate_CLOSED_CHANNEL:
 		req := lnrpc.ClosedChannelsRequest{}
 		r, err := client.ClosedChannels(ctx, &req)
 		if err != nil {
-			return errors.Wrapf(err, "client.ClosedChannels(%v, %v)", req)
+			return errors.Wrapf(err, "ImportChannelList -> client.ClosedChannels(%v, %v)", ctx, req)
 		}
 
 		err = storeImportedClosedChannels(db, r.Channels)
 		if err != nil {
-			return errors.Wrapf(err, "storeImportedClosedChannels(%v, jb)", db)
+			return errors.Wrapf(err, "ImportChannelList -> storeImportedClosedChannels(%v, %v)", db, r.Channels)
 		}
 
 	}
@@ -245,7 +246,7 @@ icoLoop:
 			true, channel.ChanId, channel.ChannelPoint, channel.RemotePubkey, jb)
 		if err != nil {
 			return errors.Wrapf(err, "storeChannelOpenList -> "+
-				"enrichAndInsertChannelEvent(%v, %s, %s, %t, %d, %s, %s, %v)", db,
+				"enrichAndInsertChannelEvent(%v, %d, %t, %d, %s, %s, %v)", db,
 				lnrpc.ChannelEventUpdate_OPEN_CHANNEL, true, channel.ChanId, channel.ChannelPoint,
 				channel.RemotePubkey, jb)
 		}
@@ -283,8 +284,8 @@ icoLoop:
 		err = enrichAndInsertChannelEvent(db, lnrpc.ChannelEventUpdate_CLOSED_CHANNEL,
 			true, channel.ChanId, channel.ChannelPoint, channel.RemotePubkey, jb)
 		if err != nil {
-			return errors.Wrapf(err, "storeChannelOpenList -> "+
-				"enrichAndInsertChannelEvent(%v, %s, %s, %t, %d, %s, %s, %v)", db,
+			return errors.Wrapf(err, "storeImportedClosedChannels -> "+
+				"enrichAndInsertChannelEvent(%v, %s, %t, %d, %s, %s, %v)", db,
 				lnrpc.ChannelEventUpdate_CLOSED_CHANNEL, true, channel.ChanId, channel.ChannelPoint,
 				channel.RemotePubkey, jb)
 		}
@@ -299,7 +300,7 @@ func insertChannelEvent(db *sqlx.DB, ts time.Time, eventType lnrpc.ChannelEventU
 	imported bool, chanId uint64, chanPoint string, pubKey string, jb []byte) error {
 	_, err := db.Exec(sqlStm, ts, eventType, imported, chanId, chanPoint, pubKey, jb)
 	if err != nil {
-		return errors.Wrapf(err, `insertChannelEvent -> db.Exec(%s, %s, %s, %t, %d, %s, %s, jb)`,
+		return errors.Wrapf(err, `insertChannelEvent -> db.Exec(%s, %s, %d, %t, %d, %s, %s, %v)`,
 			sqlStm, ts, eventType, imported, chanId, chanPoint, pubKey, jb)
 	}
 	return nil
