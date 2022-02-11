@@ -40,7 +40,7 @@ type dbForwardEvent struct {
 }
 
 func convMicro(ns uint64) time.Time {
-	return time.Unix(0, int64(ns)).Round(time.Microsecond)
+	return time.Unix(0, int64(ns)).Round(time.Microsecond).UTC()
 }
 
 const querySfwh = `INSERT INTO forward(time, time_ns, fee_msat,

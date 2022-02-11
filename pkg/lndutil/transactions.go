@@ -76,7 +76,7 @@ var insertTx = `INSERT INTO tx (timestamp, tx_hash, amount, num_confirmations, b
 func storeTransaction(db *sqlx.DB, tx *lnrpc.Transaction) error {
 
 	_, err := db.Exec(insertTx,
-		time.Unix(tx.TimeStamp, 0),
+		time.Unix(tx.TimeStamp, 0).UTC(),
 		tx.TxHash,
 		tx.Amount,
 		tx.NumConfirmations,
@@ -90,7 +90,7 @@ func storeTransaction(db *sqlx.DB, tx *lnrpc.Transaction) error {
 
 	if err != nil {
 		return errors.Wrapf(err, `storeTransaction -> db.Exec(%s, %s, %s, %d, %d, %s, %d, %d, %v, %s, %s)`, insertTx,
-			time.Unix(tx.TimeStamp, 0),
+			time.Unix(tx.TimeStamp, 0).UTC(),
 			tx.TxHash,
 			tx.Amount,
 			tx.NumConfirmations,

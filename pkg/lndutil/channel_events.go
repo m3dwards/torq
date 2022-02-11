@@ -34,7 +34,7 @@ func storeChannelEvent(db *sqlx.DB, ce *lnrpc.ChannelEventUpdate,
 		return fmt.Errorf("storeChannelEvent -> json.Marshal(%v): %v", ce, err)
 	}
 
-	timestampMs := time.Now()
+	timestampMs := time.Now().UTC()
 
 	var ChanID uint64
 	var ChannelPoint string
@@ -204,7 +204,7 @@ func enrichAndInsertChannelEvent(db *sqlx.DB, eventType lnrpc.ChannelEventUpdate
 
 	// Use current time for imported channel events (open/close).
 	// The time used to open/close events is the timestamp of the opening transaction.
-	timestampMs := time.Now()
+	timestampMs := time.Now().UTC()
 
 	err := insertChannelEvent(db, timestampMs, eventType, imported, chanId, chanPoint, pubKey, jb)
 	if err != nil {

@@ -68,7 +68,7 @@ func processNodeUpdates(nus []*lnrpc.NodeUpdate, db *sqlx.DB) error {
 		relevant, _ := isRelevantOrOurNode(nu.IdentityKey)
 
 		if relevant {
-			ts := time.Now()
+			ts := time.Now().UTC()
 			err := insertNodeEvent(db, ts, nu.IdentityKey, nu.Alias, nu.Color,
 				nu.NodeAddresses, nu.Features)
 			if err != nil {
@@ -98,7 +98,7 @@ func processChannelUpdates(cus []*lnrpc.ChannelEdgeUpdate, db *sqlx.DB) error {
 		relevantChannel := isRelevantChannel(chanPoint)
 
 		if relevantChannel {
-			ts := time.Now()
+			ts := time.Now().UTC()
 			err := insertRoutingPolicy(db, ts, ourNode, cu)
 			if err != nil {
 				return errors.Wrapf(err, "SubscribeChannelEvents ->insertRoutingPolicy(%v, %s, %t, %v)",

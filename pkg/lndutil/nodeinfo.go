@@ -48,7 +48,7 @@ func ImportMissingNodeEvents(client lnrpc.LightningClient, db *sqlx.DB) error {
 				}
 			}
 		}
-		ts := time.Now()
+		ts := time.Now().UTC()
 		err = insertNodeEvent(db, ts, rsp.Node.PubKey, rsp.Node.Alias, rsp.Node.Color,
 			rsp.Node.Addresses, rsp.Node.Features)
 		if err != nil {
