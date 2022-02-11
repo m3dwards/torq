@@ -170,6 +170,24 @@ func insertRoutingPolicy(db *sqlx.DB, ts time.Time, outbound bool, cu *lnrpc.Cha
 	return nil
 }
 
+const neQuery = `INSERT INTO node_event (timestamp, pub_key, alias, color, node_addresses, features)
+SELECT $1,$2,$3,$4,$5,$6
+WHERE NOT EXISTS (
+select true
+from (select pub_key,
+        last(alias, timestamp) as  alias,
+        last(color,timestamp) as color,
+        last(node_addresses,timestamp) as node_addresses,
+        last(features,timestamp) as features
+    from node_event
+    group by pub_key) as a
+where a.pub_key = $2 and
+      a.alias = $3 and
+      a.color = $4 and
+      a.node_addresses = $5 and
+      a.features = $6
+);`
+
 func insertNodeEvent(db *sqlx.DB, ts time.Time, pubKey string, alias string, color string,
 	na []*lnrpc.NodeAddress, f map[uint32]*lnrpc.Feature) error {
 
@@ -185,8 +203,7 @@ func insertNodeEvent(db *sqlx.DB, ts time.Time, pubKey string, alias string, col
 		return errors.Wrapf(err, "insertNodeEvent -> json.Marshal(%v)", f)
 	}
 
-	db.Exec(`INSERT INTO node_event (timestamp, pub_key, alias, color, node_addresses, features) 
-    	VALUES ($1, $2, $3, $4, $5, $6)`, ts, pubKey, alias, color, najb, fjb)
+	db.Exec(neQuery, ts, pubKey, alias, color, najb, fjb)
 
 	return nil
 }

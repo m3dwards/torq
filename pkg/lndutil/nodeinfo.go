@@ -15,15 +15,8 @@ import (
 // we have a channel with but where we do not have any node event records.
 func getMissingNodePubKeys(db *sqlx.DB) ([]string, error) {
 
-	// Fetch a list of all unknown channel PubKeys by subtracting a set of all
-	// pub_keys from all channels, from a set of pub_keys from all nodes already stored.
-	q := `select
-		   CASE
-			   WHEN existing_nodes is null THEN all_nodes
-			   ELSE array_subtract(all_nodes, existing_nodes)
-			END missing from
-		(select array_agg(distinct pub_key) as all_nodes from channel_event where event_type in (0,1)) as c,
-		(select array_agg(distinct pub_key) as existing_nodes from node_event as ce) as e;`
+	// Fetch a slice of all public keys related to both open and closed channels
+	q := `select array_agg(distinct pub_key) from channel_event where pub_key != '';`
 
 	var res []string
 	err := db.QueryRowx(q).Scan(pq.Array(&res))
@@ -44,7 +37,6 @@ func ImportMissingNodeEvents(client lnrpc.LightningClient, db *sqlx.DB) error {
 
 	ctx := context.Background()
 	for _, p := range pubKeyList {
-		//fmt.Println(p)
 		rsp, err := client.GetNodeInfo(ctx, &lnrpc.NodeInfoRequest{PubKey: p, IncludeChannels: false})
 		if err != nil {
 			if e, ok := status.FromError(err); ok {
