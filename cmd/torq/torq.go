@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"log"
 	"os"
-	"time"
 )
 
 func loadFlags() func(context *cli.Context) (altsrc.InputSourceContext, error) {
@@ -282,9 +281,22 @@ func main() {
 			client := torqrpc.NewTorqrpcClient(conn)
 			ctx := context.Background()
 			response, err := client.GetAggrigatedForwards(ctx, &torqrpc.AggregatedForwardsRequest{
-				FromTs: time.Date(2022, 02, 01, 0, 0, 0, 0, time.UTC).Unix(),
-				ToTs:   time.Date(2022, 02, 11, 0, 0, 0, 0, time.UTC).Unix(),
+				//FromTs: time.Date(2021, 02, 01, 0, 0, 0, 0, time.UTC).Unix(),
+				//ToTs:   time.Date(2022, 02, 11, 0, 0, 0, 0, time.UTC).Unix(),
+				FromTs: 0,
+				ToTs:   0,
 				Ids:    &torqrpc.AggregatedForwardsRequest_ChannelIds{},
+				//Ids: &torqrpc.AggregatedForwardsRequest_PeerIds{
+				//	PeerIds: &torqrpc.PeerIDs{
+				//		PubKeys: []string{
+				//			"03b323009613777edc4e8024c6726758396bc026da99545971164a6baad31dfc69",
+				//			"039efdf7a40f848d9fe30f1ab97b297c06f96fde1992ece0eca7639711ecac5a93",
+				//			"03e8b9a977fa3ae7acce74c25986c7240a921222e349729737df832a1b5ceb49df",
+				//			"030bec0fb4a5dd5c2dffa5f008210a9b7e0689ee4bf7ae15a7e52491c65fbf4ca5",
+				//			"021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d",
+				//		},
+				//	},
+				//},
 			})
 			if err != nil {
 				return err
