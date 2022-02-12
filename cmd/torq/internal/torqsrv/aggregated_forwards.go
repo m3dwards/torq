@@ -52,8 +52,16 @@ func (s torqGrpc) GetAggrigatedForwards(ctx context.Context, req *torqrpc.Aggreg
 
 func getAggForwardsByChanIds(db *sqlx.DB, fromTs int64, toTs int64, cids []uint64) (r []*torqrpc.AggregatedForwards, err error) {
 
-	fromTime := time.Unix(fromTs, 0).UTC()
-	toTime := time.Unix(toTs, 0).UTC()
+	var fromTime time.Time
+	toTime := time.Now()
+
+	if fromTs != 0 {
+		fromTime = time.Unix(fromTs, 0).UTC()
+	}
+
+	if toTs != 0 {
+		toTime = time.Unix(toTs, 0).UTC()
+	}
 
 	var rows *sql.Rows
 
