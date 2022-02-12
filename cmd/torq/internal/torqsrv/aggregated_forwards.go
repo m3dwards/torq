@@ -24,7 +24,7 @@ func (s torqGrpc) GetAggrigatedForwards(ctx context.Context, req *torqrpc.Aggreg
 		r, err := getAggForwardsByChanIds(s.db, req.FromTs, req.ToTs, req.GetChannelIds().ChanIds)
 		if err != nil {
 			return nil, errors.Wrapf(err, "GetAggregatedForwards -> getAggForwardsByChanIds(%v, %d, %d, %v)",
-				s.db, req.FromTs, req.ToTs, []uint64{})
+				s.db, req.FromTs, req.ToTs, req.GetChannelIds().ChanIds)
 		}
 
 		resp.AggregatedForwards = r
@@ -40,7 +40,7 @@ func (s torqGrpc) GetAggrigatedForwards(ctx context.Context, req *torqrpc.Aggreg
 		// Fetch based on tags
 		resp.GroupType = torqrpc.GroupType_TAG
 
-		return &resp, nil
+		return &resp, fmt.Errorf("aggregating by tag is not yet implemented")
 	case nil:
 		return nil, fmt.Errorf("no aggregation type set")
 	default:
@@ -73,7 +73,7 @@ func getAggForwardsByChanIds(db *sqlx.DB, fromTs int64, toTs int64, cids []uint6
 		qs := db.Rebind(q)
 		rows, err = db.Query(qs, args...)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getAggForwardsByChanIds -> db.Queryx(db.Rebind(qs), args...)")
+			return nil, errors.Wrapf(err, "getAggForwardsByChanIds -> db.Query(db.Rebind(qs), args...)")
 		}
 
 	} else { // Request all channel IDs if none are given
