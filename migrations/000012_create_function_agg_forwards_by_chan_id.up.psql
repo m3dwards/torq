@@ -54,7 +54,7 @@ full outer join (
     -- Get all outbound forwards
     select outgoing_channel_id as chan_id,
            last(ne.alias, ne.timestamp) as alias,
-           floor(sum(incoming_amount_msat/1000)) as amount_out,
+           floor(sum(outgoing_amount_msat/1000)) as amount_out,
            floor(sum(fee_msat/1000)) as fee_out,
            count(time_ns) as count_out,
            ce.pub_key as pub_key
