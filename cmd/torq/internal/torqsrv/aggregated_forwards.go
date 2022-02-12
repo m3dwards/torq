@@ -11,6 +11,45 @@ import (
 	"time"
 )
 
+func (s torqGrpc) GetAggrigatedForwards(ctx context.Context, req *torqrpc.AggregatedForwardsRequest) (
+	*torqrpc.AggregatedForwardsResponse, error) {
+
+	resp := torqrpc.AggregatedForwardsResponse{}
+	resp.FromTs = req.FromTs
+	resp.ToTs = req.ToTs
+
+	switch x := req.Ids.(type) {
+	case *torqrpc.AggregatedForwardsRequest_ChannelIds:
+
+		r, err := getAggForwardsByChanIds(s.db, req.FromTs, req.ToTs, req.GetChannelIds().ChanIds)
+		if err != nil {
+			return nil, errors.Wrapf(err, "GetAggregatedForwards -> getAggForwardsByChanIds(%v, %d, %d, %v)",
+				s.db, req.FromTs, req.ToTs, []uint64{})
+		}
+
+		resp.AggregatedForwards = r
+		resp.GroupType = torqrpc.GroupType_CHANNEL
+
+		return &resp, nil
+	case *torqrpc.AggregatedForwardsRequest_PeerIds:
+		// Fetch based on peer ids
+		resp.GroupType = torqrpc.GroupType_PEER
+
+		return &resp, nil
+	case *torqrpc.AggregatedForwardsRequest_TagIds:
+		// Fetch based on tags
+		resp.GroupType = torqrpc.GroupType_TAG
+
+		return &resp, nil
+	case nil:
+		return nil, fmt.Errorf("no aggregation type set")
+	default:
+		return nil, fmt.Errorf("aggregatedForwardsRequest has unexpected Id type %T", x)
+	}
+
+	return nil, nil
+}
+
 func getAggForwardsByChanIds(db *sqlx.DB, fromTs int64, toTs int64, cids []uint64) (r []*torqrpc.AggregatedForwards, err error) {
 
 	fromTime := time.Unix(fromTs, 0).UTC()
@@ -81,43 +120,4 @@ func getAggForwardsByChanIds(db *sqlx.DB, fromTs int64, toTs int64, cids []uint6
 	}
 
 	return r, nil
-}
-
-func (s torqGrpc) GetAggrigatedForwards(ctx context.Context, req *torqrpc.AggregatedForwardsRequest) (
-	*torqrpc.AggregatedForwardsResponse, error) {
-
-	resp := torqrpc.AggregatedForwardsResponse{}
-	resp.FromTs = req.FromTs
-	resp.ToTs = req.ToTs
-
-	switch x := req.Ids.(type) {
-	case *torqrpc.AggregatedForwardsRequest_ChannelIds:
-
-		r, err := getAggForwardsByChanIds(s.db, req.FromTs, req.ToTs, req.GetChannelIds().ChanIds)
-		if err != nil {
-			return nil, errors.Wrapf(err, "GetAggregatedForwards -> getAggForwardsByChanIds(%v, %d, %d, %v)",
-				s.db, req.FromTs, req.ToTs, []uint64{})
-		}
-
-		resp.AggregatedForwards = r
-		resp.GroupType = torqrpc.GroupType_CHANNEL
-
-		return &resp, nil
-	case *torqrpc.AggregatedForwardsRequest_PeerIds:
-		// Fetch based on peer ids
-		resp.GroupType = torqrpc.GroupType_PEER
-
-		return &resp, nil
-	case *torqrpc.AggregatedForwardsRequest_TagIds:
-		// Fetch based on tags
-		resp.GroupType = torqrpc.GroupType_TAG
-
-		return &resp, nil
-	case nil:
-		return nil, fmt.Errorf("no aggregation type set")
-	default:
-		return nil, fmt.Errorf("aggregatedForwardsRequest has unexpected Id type %T", x)
-	}
-
-	return nil, nil
 }
