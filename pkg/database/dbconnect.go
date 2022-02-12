@@ -8,9 +8,9 @@ import (
 )
 
 // PgConnect connects to a pg database
-func PgConnect(dbName, user, password, host, port string) (*sqlx.DB, error) {
+func PgConnect(dbName, user, password, host, port string) (db *sqlx.DB, err error) {
 
-	db, err := sqlx.Connect("postgres",
+	db, err = sqlx.Connect("postgres",
 		fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port,
 			dbName))
 	//fmt.Sprintf("user=%s dbname=%s password=%s port=%s host=%s sslmode=disable", user, dbName,

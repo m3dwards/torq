@@ -1,0 +1,1 @@
+drop function agg_forwards_by_pub_key(start_time timestamp, end_time timestamp, pub_keys text[]);

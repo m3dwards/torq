@@ -7,6 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/lncapital/torq/build"
 	"github.com/lncapital/torq/cmd/torq/internal/subscribe"
+	"github.com/lncapital/torq/cmd/torq/internal/torqsrv"
 	"github.com/lncapital/torq/migrations"
 	"github.com/lncapital/torq/pkg/database"
 	"github.com/lncapital/torq/pkg/lndutil"
@@ -18,7 +19,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"log"
 	"os"
-	"time"
 )
 
 func loadFlags() func(context *cli.Context) (altsrc.InputSourceContext, error) {
@@ -174,33 +174,85 @@ func main() {
 				return nil
 			})
 
-			//srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
-			//	c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
+			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
+				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
 
-			//// Starts the grpc server
-			//errs.Go(func() error {
-			//	err := srv.StartGrpc()
-			//	if err != nil {
-			//		return err
-			//	}
-			//	return nil
-			//})
-			//
-			//// Starts the grpc-web proxy server
-			//errs.Go(func() error {
-			//	err := srv.StartWeb()
-			//	if err != nil {
-			//		return err
-			//	}
-			//	return nil
-			//})
+			// Starts the grpc server
+			errs.Go(func() error {
+				err := srv.StartGrpc()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 
-			//err = errs.Wait()
-			//if err != nil {
-			//	fmt.Printf("trying to exit")
-			//	srv.Srv.Stop()
-			//	return err
-			//}
+			// Starts the grpc-web proxy server
+			errs.Go(func() error {
+				err := srv.StartWeb()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+
+			return errs.Wait()
+		},
+	}
+
+	startGrpc := &cli.Command{
+		Name:  "start_grpc",
+		Usage: "",
+		Action: func(c *cli.Context) error {
+			fmt.Println("Starting Torq gRPC server only")
+
+			fmt.Println("Connecting to the Torq database")
+			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
+				c.String("db.password"), c.String("db.host"), c.String("db.port"))
+			if err != nil {
+				return fmt.Errorf("(cmd/lnc streamHtlcCommand) error connecting to db: %v", err)
+			}
+
+			defer func() {
+				cerr := db.Close()
+				if err == nil {
+					err = cerr
+				}
+			}()
+
+			fmt.Println("Checking for migrations..")
+			// Check if the database needs to be migrated.
+			err = migrations.MigrateUp(db.DB)
+			if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+				return err
+			}
+
+			if err != nil {
+				return fmt.Errorf("failed to connect to lnd: %v", err)
+			}
+
+			ctx := context.Background()
+			errs, ctx := errgroup.WithContext(ctx)
+
+			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
+				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
+
+			// Starts the grpc server
+			errs.Go(func() error {
+				err := srv.StartGrpc()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+
+			// Starts the grpc-web proxy server
+			errs.Go(func() error {
+				err := srv.StartWeb()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 
 			return errs.Wait()
 		},
@@ -228,10 +280,23 @@ func main() {
 
 			client := torqrpc.NewTorqrpcClient(conn)
 			ctx := context.Background()
-			response, err := client.GetChannelFlow(ctx, &torqrpc.ChannelFlowRequest{
-				FromTime: 0,
-				ToTime:   time.Now().Unix(),
-				ChanIds:  []uint64{779216194111275009},
+			response, err := client.GetAggrigatedForwards(ctx, &torqrpc.AggregatedForwardsRequest{
+				//FromTs: time.Date(2021, 02, 01, 0, 0, 0, 0, time.UTC).Unix(),
+				//ToTs:   time.Date(2022, 02, 11, 0, 0, 0, 0, time.UTC).Unix(),
+				FromTs: 0,
+				ToTs:   0,
+				Ids:    &torqrpc.AggregatedForwardsRequest_ChannelIds{},
+				//Ids: &torqrpc.AggregatedForwardsRequest_PeerIds{
+				//	PeerIds: &torqrpc.PeerIDs{
+				//		PubKeys: []string{
+				//			"03b323009613777edc4e8024c6726758396bc026da99545971164a6baad31dfc69",
+				//			"039efdf7a40f848d9fe30f1ab97b297c06f96fde1992ece0eca7639711ecac5a93",
+				//			"03e8b9a977fa3ae7acce74c25986c7240a921222e349729737df832a1b5ceb49df",
+				//			"030bec0fb4a5dd5c2dffa5f008210a9b7e0689ee4bf7ae15a7e52491c65fbf4ca5",
+				//			"021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d",
+				//		},
+				//	},
+				//},
 			})
 			if err != nil {
 				return err
@@ -300,6 +365,7 @@ func main() {
 
 	app.Commands = cli.Commands{
 		start,
+		startGrpc,
 		callGrpc,
 		migrateUp,
 		migrateDown,

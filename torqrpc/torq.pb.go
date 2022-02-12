@@ -24,21 +24,76 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ChannelFlowRequest struct {
+type GroupType int32
+
+const (
+	GroupType_CHANNEL GroupType = 0
+	GroupType_PEER    GroupType = 1
+	GroupType_TAG     GroupType = 2
+)
+
+// Enum value maps for GroupType.
+var (
+	GroupType_name = map[int32]string{
+		0: "CHANNEL",
+		1: "PEER",
+		2: "TAG",
+	}
+	GroupType_value = map[string]int32{
+		"CHANNEL": 0,
+		"PEER":    1,
+		"TAG":     2,
+	}
+)
+
+func (x GroupType) Enum() *GroupType {
+	p := new(GroupType)
+	*p = x
+	return p
+}
+
+func (x GroupType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GroupType) Descriptor() protoreflect.EnumDescriptor {
+	return file_torq_proto_enumTypes[0].Descriptor()
+}
+
+func (GroupType) Type() protoreflect.EnumType {
+	return &file_torq_proto_enumTypes[0]
+}
+
+func (x GroupType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GroupType.Descriptor instead.
+func (GroupType) EnumDescriptor() ([]byte, []int) {
+	return file_torq_proto_rawDescGZIP(), []int{0}
+}
+
+// ------------------------------------------------------------------
+// Aggregated forwards
+// ------------------------------------------------------------------
+type AggregatedForwardsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	// From what date/time (unix timestamp)
-	FromTime int64 `protobuf:"varint,1,opt,name=from_time,json=fromTime,proto3" json:"from_time,omitempty"`
+	FromTs int64 `protobuf:"varint,1,opt,name=from_ts,json=fromTs,proto3" json:"from_ts,omitempty"`
 	// To what date/time (unix timestamp)
-	ToTime int64 `protobuf:"varint,2,opt,name=to_time,json=toTime,proto3" json:"to_time,omitempty"`
-	// TODO: Add "repeated" here to request multiple channels at once.
-	ChanIds []uint64 `protobuf:"varint,3,rep,packed,name=chan_ids,json=chanIds,proto3" json:"chan_ids,omitempty"`
+	ToTs int64 `protobuf:"varint,2,opt,name=to_ts,json=toTs,proto3" json:"to_ts,omitempty"`
+	// Types that are assignable to Ids:
+	//	*AggregatedForwardsRequest_ChannelIds
+	//	*AggregatedForwardsRequest_PeerIds
+	//	*AggregatedForwardsRequest_TagIds
+	Ids isAggregatedForwardsRequest_Ids `protobuf_oneof:"ids"`
 }
 
-func (x *ChannelFlowRequest) Reset() {
-	*x = ChannelFlowRequest{}
+func (x *AggregatedForwardsRequest) Reset() {
+	*x = AggregatedForwardsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_torq_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -46,13 +101,13 @@ func (x *ChannelFlowRequest) Reset() {
 	}
 }
 
-func (x *ChannelFlowRequest) String() string {
+func (x *AggregatedForwardsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChannelFlowRequest) ProtoMessage() {}
+func (*AggregatedForwardsRequest) ProtoMessage() {}
 
-func (x *ChannelFlowRequest) ProtoReflect() protoreflect.Message {
+func (x *AggregatedForwardsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_torq_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -64,59 +119,95 @@ func (x *ChannelFlowRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChannelFlowRequest.ProtoReflect.Descriptor instead.
-func (*ChannelFlowRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use AggregatedForwardsRequest.ProtoReflect.Descriptor instead.
+func (*AggregatedForwardsRequest) Descriptor() ([]byte, []int) {
 	return file_torq_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ChannelFlowRequest) GetFromTime() int64 {
+func (x *AggregatedForwardsRequest) GetFromTs() int64 {
 	if x != nil {
-		return x.FromTime
+		return x.FromTs
 	}
 	return 0
 }
 
-func (x *ChannelFlowRequest) GetToTime() int64 {
+func (x *AggregatedForwardsRequest) GetToTs() int64 {
 	if x != nil {
-		return x.ToTime
+		return x.ToTs
 	}
 	return 0
 }
 
-func (x *ChannelFlowRequest) GetChanIds() []uint64 {
-	if x != nil {
-		return x.ChanIds
+func (m *AggregatedForwardsRequest) GetIds() isAggregatedForwardsRequest_Ids {
+	if m != nil {
+		return m.Ids
 	}
 	return nil
 }
 
-type ChannelFlow struct {
+func (x *AggregatedForwardsRequest) GetChannelIds() *ChannelIDs {
+	if x, ok := x.GetIds().(*AggregatedForwardsRequest_ChannelIds); ok {
+		return x.ChannelIds
+	}
+	return nil
+}
+
+func (x *AggregatedForwardsRequest) GetPeerIds() *PeerIDs {
+	if x, ok := x.GetIds().(*AggregatedForwardsRequest_PeerIds); ok {
+		return x.PeerIds
+	}
+	return nil
+}
+
+func (x *AggregatedForwardsRequest) GetTagIds() *TagIDs {
+	if x, ok := x.GetIds().(*AggregatedForwardsRequest_TagIds); ok {
+		return x.TagIds
+	}
+	return nil
+}
+
+type isAggregatedForwardsRequest_Ids interface {
+	isAggregatedForwardsRequest_Ids()
+}
+
+type AggregatedForwardsRequest_ChannelIds struct {
+	ChannelIds *ChannelIDs `protobuf:"bytes,3,opt,name=channel_ids,json=channelIds,proto3,oneof"`
+}
+
+type AggregatedForwardsRequest_PeerIds struct {
+	PeerIds *PeerIDs `protobuf:"bytes,4,opt,name=peer_ids,json=peerIds,proto3,oneof"`
+}
+
+type AggregatedForwardsRequest_TagIds struct {
+	TagIds *TagIDs `protobuf:"bytes,5,opt,name=tag_ids,json=tagIds,proto3,oneof"`
+}
+
+func (*AggregatedForwardsRequest_ChannelIds) isAggregatedForwardsRequest_Ids() {}
+
+func (*AggregatedForwardsRequest_PeerIds) isAggregatedForwardsRequest_Ids() {}
+
+func (*AggregatedForwardsRequest_TagIds) isAggregatedForwardsRequest_Ids() {}
+
+type AggregatedForwardsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// What channel ID's the flow is for
-	ChanIds []uint64 `protobuf:"varint,1,rep,packed,name=chan_ids,json=chanIds,proto3" json:"chan_ids,omitempty"`
 	// From what date/time (unix timestamp)
-	FromTime int64 `protobuf:"varint,2,opt,name=from_time,json=fromTime,proto3" json:"from_time,omitempty"`
+	FromTs int64 `protobuf:"varint,1,opt,name=from_ts,json=fromTs,proto3" json:"from_ts,omitempty"`
 	// To what date/time (unix timestamp)
-	ToTime int64 `protobuf:"varint,3,opt,name=to_time,json=toTime,proto3" json:"to_time,omitempty"`
-	// Fees earned by other channels using this channels inbound liquidity.
-	FeeIn uint64 `protobuf:"varint,4,opt,name=fee_in,json=feeIn,proto3" json:"fee_in,omitempty"`
-	// Fees earned by this channels outbound liquidity
-	FeeOut uint64 `protobuf:"varint,5,opt,name=fee_out,json=feeOut,proto3" json:"fee_out,omitempty"`
-	// Amount inbound
-	AmtIn uint64 `protobuf:"varint,6,opt,name=amt_in,json=amtIn,proto3" json:"amt_in,omitempty"`
-	// Amount outbound
-	AmtOut uint64 `protobuf:"varint,7,opt,name=amt_out,json=amtOut,proto3" json:"amt_out,omitempty"`
-	// Number of forwards inbound
-	CountIn int64 `protobuf:"varint,8,opt,name=count_in,json=countIn,proto3" json:"count_in,omitempty"`
-	// Number of forwards outbound
-	CountOut int64 `protobuf:"varint,9,opt,name=count_out,json=countOut,proto3" json:"count_out,omitempty"`
+	ToTs int64 `protobuf:"varint,2,opt,name=to_ts,json=toTs,proto3" json:"to_ts,omitempty"`
+	// This represents the type of aggregation
+	// 0 = CHANNEL, means forwards are aggregated per channel
+	// 1 = PEER, means forwards are aggregated per peer (remote public key)
+	// 1 = TAG, means forwards are aggregated per tag, tags are a user defined group of channels.
+	GroupType GroupType `protobuf:"varint,3,opt,name=group_type,json=groupType,proto3,enum=torqrpc.GroupType" json:"group_type,omitempty"`
+	// a list of aggregated forwarding stats
+	AggregatedForwards []*AggregatedForwards `protobuf:"bytes,4,rep,name=aggregated_forwards,json=aggregatedForwards,proto3" json:"aggregated_forwards,omitempty"`
 }
 
-func (x *ChannelFlow) Reset() {
-	*x = ChannelFlow{}
+func (x *AggregatedForwardsResponse) Reset() {
+	*x = AggregatedForwardsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_torq_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -124,13 +215,13 @@ func (x *ChannelFlow) Reset() {
 	}
 }
 
-func (x *ChannelFlow) String() string {
+func (x *AggregatedForwardsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChannelFlow) ProtoMessage() {}
+func (*AggregatedForwardsResponse) ProtoMessage() {}
 
-func (x *ChannelFlow) ProtoReflect() protoreflect.Message {
+func (x *AggregatedForwardsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_torq_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -142,96 +233,76 @@ func (x *ChannelFlow) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChannelFlow.ProtoReflect.Descriptor instead.
-func (*ChannelFlow) Descriptor() ([]byte, []int) {
+// Deprecated: Use AggregatedForwardsResponse.ProtoReflect.Descriptor instead.
+func (*AggregatedForwardsResponse) Descriptor() ([]byte, []int) {
 	return file_torq_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ChannelFlow) GetChanIds() []uint64 {
+func (x *AggregatedForwardsResponse) GetFromTs() int64 {
 	if x != nil {
-		return x.ChanIds
+		return x.FromTs
+	}
+	return 0
+}
+
+func (x *AggregatedForwardsResponse) GetToTs() int64 {
+	if x != nil {
+		return x.ToTs
+	}
+	return 0
+}
+
+func (x *AggregatedForwardsResponse) GetGroupType() GroupType {
+	if x != nil {
+		return x.GroupType
+	}
+	return GroupType_CHANNEL
+}
+
+func (x *AggregatedForwardsResponse) GetAggregatedForwards() []*AggregatedForwards {
+	if x != nil {
+		return x.AggregatedForwards
 	}
 	return nil
 }
 
-func (x *ChannelFlow) GetFromTime() int64 {
-	if x != nil {
-		return x.FromTime
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetToTime() int64 {
-	if x != nil {
-		return x.ToTime
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetFeeIn() uint64 {
-	if x != nil {
-		return x.FeeIn
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetFeeOut() uint64 {
-	if x != nil {
-		return x.FeeOut
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetAmtIn() uint64 {
-	if x != nil {
-		return x.AmtIn
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetAmtOut() uint64 {
-	if x != nil {
-		return x.AmtOut
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetCountIn() int64 {
-	if x != nil {
-		return x.CountIn
-	}
-	return 0
-}
-
-func (x *ChannelFlow) GetCountOut() int64 {
-	if x != nil {
-		return x.CountOut
-	}
-	return 0
-}
-
+// AggregatedForwards represents a channels, peers or tags aggregated forwarding stats.
 type AggregatedForwards struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	FromTime int64 `protobuf:"varint,1,opt,name=from_time,json=fromTime,proto3" json:"from_time,omitempty"`
-	ToTime   int64 `protobuf:"varint,2,opt,name=to_time,json=toTime,proto3" json:"to_time,omitempty"`
-	// The incoming channel ID that carried the HTLC that created the circuit.
-	ChanIdIn uint64 `protobuf:"varint,3,opt,name=chan_id_in,json=chanIdIn,proto3" json:"chan_id_in,omitempty"`
-	// The outgoing channel ID that carried the preimage that completed the
-	// circuit.
-	ChanIdOut uint64 `protobuf:"varint,4,opt,name=chan_id_out,json=chanIdOut,proto3" json:"chan_id_out,omitempty"`
-	// The total fee (in satoshis) that this payment circuit carried.
-	Fee uint64 `protobuf:"varint,5,opt,name=fee,proto3" json:"fee,omitempty"`
-	// The total amount (in satoshis) of the incoming HTLC that created half
-	// the circuit.
-	AmtIn uint64 `protobuf:"varint,6,opt,name=amt_in,json=amtIn,proto3" json:"amt_in,omitempty"`
-	// The total amount (in satoshis) of the outgoing HTLC that created the
-	// second half of the circuit.
-	AmtOut   uint64 `protobuf:"varint,7,opt,name=amt_out,json=amtOut,proto3" json:"amt_out,omitempty"`
-	CountIn  int64  `protobuf:"varint,8,opt,name=count_in,json=countIn,proto3" json:"count_in,omitempty"`
-	CountOut int64  `protobuf:"varint,9,opt,name=count_out,json=countOut,proto3" json:"count_out,omitempty"`
+	// A list of the channel included in the aggregated result.
+	Channels []*ChanInfo `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	// This represents the type of aggregation
+	// 0 = CHANNEL, means forwards are aggregated per channel
+	// 1 = PEER, means forwards are aggregated per peer (remote public key)
+	// 1 = TAG, means forwards are aggregated per tag, tags are a user defined group of channels.
+	GroupType GroupType `protobuf:"varint,2,opt,name=group_type,json=groupType,proto3,enum=torqrpc.GroupType" json:"group_type,omitempty"`
+	// The group_id depends on the granularity requested.
+	//   * Channel ID for individual channels
+	//   * Remote peers public key when it's grouped per peer
+	//   * Tag id when it's grouped by tag.
+	GroupId string `protobuf:"bytes,4,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// The group_name depends on the granularity requested.
+	//   * Individual channels use the format: <Alias> (<Channel ID>)
+	//   * Peer grouped use the format: <Alias>
+	//   * Tag groups use the format: <Tag Name>
+	GroupName string `protobuf:"bytes,5,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	// The  outbound amount in sats (Satoshis)
+	AmountOut uint64 `protobuf:"varint,6,opt,name=amount_out,json=amountOut,proto3" json:"amount_out,omitempty"`
+	// The inbound amount in sats (Satoshis)
+	AmountIn uint64 `protobuf:"varint,7,opt,name=amount_in,json=amountIn,proto3" json:"amount_in,omitempty"`
+	// The outbound fee in sats. This is what the channel has directly produced.
+	FeeOut uint64 `protobuf:"varint,8,opt,name=fee_out,json=feeOut,proto3" json:"fee_out,omitempty"`
+	// The inbound fee in sats. This is what the channel has indirectly produced.
+	// These fees are not really earned by this channel/peer/group, but represents
+	// the channel/peer/group contribution to fees earned by other channels.
+	FeeIn uint64 `protobuf:"varint,9,opt,name=fee_in,json=feeIn,proto3" json:"fee_in,omitempty"`
+	// Number of outbound forwards.
+	CountOut uint64 `protobuf:"varint,10,opt,name=count_out,json=countOut,proto3" json:"count_out,omitempty"`
+	// Number of inbound forwards.
+	CountIn uint64 `protobuf:"varint,11,opt,name=count_in,json=countIn,proto3" json:"count_in,omitempty"`
 }
 
 func (x *AggregatedForwards) Reset() {
@@ -266,79 +337,87 @@ func (*AggregatedForwards) Descriptor() ([]byte, []int) {
 	return file_torq_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AggregatedForwards) GetFromTime() int64 {
+func (x *AggregatedForwards) GetChannels() []*ChanInfo {
 	if x != nil {
-		return x.FromTime
+		return x.Channels
+	}
+	return nil
+}
+
+func (x *AggregatedForwards) GetGroupType() GroupType {
+	if x != nil {
+		return x.GroupType
+	}
+	return GroupType_CHANNEL
+}
+
+func (x *AggregatedForwards) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *AggregatedForwards) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *AggregatedForwards) GetAmountOut() uint64 {
+	if x != nil {
+		return x.AmountOut
 	}
 	return 0
 }
 
-func (x *AggregatedForwards) GetToTime() int64 {
+func (x *AggregatedForwards) GetAmountIn() uint64 {
 	if x != nil {
-		return x.ToTime
+		return x.AmountIn
 	}
 	return 0
 }
 
-func (x *AggregatedForwards) GetChanIdIn() uint64 {
+func (x *AggregatedForwards) GetFeeOut() uint64 {
 	if x != nil {
-		return x.ChanIdIn
+		return x.FeeOut
 	}
 	return 0
 }
 
-func (x *AggregatedForwards) GetChanIdOut() uint64 {
+func (x *AggregatedForwards) GetFeeIn() uint64 {
 	if x != nil {
-		return x.ChanIdOut
+		return x.FeeIn
 	}
 	return 0
 }
 
-func (x *AggregatedForwards) GetFee() uint64 {
-	if x != nil {
-		return x.Fee
-	}
-	return 0
-}
-
-func (x *AggregatedForwards) GetAmtIn() uint64 {
-	if x != nil {
-		return x.AmtIn
-	}
-	return 0
-}
-
-func (x *AggregatedForwards) GetAmtOut() uint64 {
-	if x != nil {
-		return x.AmtOut
-	}
-	return 0
-}
-
-func (x *AggregatedForwards) GetCountIn() int64 {
-	if x != nil {
-		return x.CountIn
-	}
-	return 0
-}
-
-func (x *AggregatedForwards) GetCountOut() int64 {
+func (x *AggregatedForwards) GetCountOut() uint64 {
 	if x != nil {
 		return x.CountOut
 	}
 	return 0
 }
 
-type Forwards struct {
+func (x *AggregatedForwards) GetCountIn() uint64 {
+	if x != nil {
+		return x.CountIn
+	}
+	return 0
+}
+
+type ChannelIDs struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Forwards []*Forward `protobuf:"bytes,1,rep,name=forwards,proto3" json:"forwards,omitempty"`
+	// A list of channel IDs
+	ChanIds []uint64 `protobuf:"varint,1,rep,packed,name=chan_ids,json=chanIds,proto3" json:"chan_ids,omitempty"`
 }
 
-func (x *Forwards) Reset() {
-	*x = Forwards{}
+func (x *ChannelIDs) Reset() {
+	*x = ChannelIDs{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_torq_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -346,13 +425,13 @@ func (x *Forwards) Reset() {
 	}
 }
 
-func (x *Forwards) String() string {
+func (x *ChannelIDs) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Forwards) ProtoMessage() {}
+func (*ChannelIDs) ProtoMessage() {}
 
-func (x *Forwards) ProtoReflect() protoreflect.Message {
+func (x *ChannelIDs) ProtoReflect() protoreflect.Message {
 	mi := &file_torq_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -364,45 +443,29 @@ func (x *Forwards) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Forwards.ProtoReflect.Descriptor instead.
-func (*Forwards) Descriptor() ([]byte, []int) {
+// Deprecated: Use ChannelIDs.ProtoReflect.Descriptor instead.
+func (*ChannelIDs) Descriptor() ([]byte, []int) {
 	return file_torq_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Forwards) GetForwards() []*Forward {
+func (x *ChannelIDs) GetChanIds() []uint64 {
 	if x != nil {
-		return x.Forwards
+		return x.ChanIds
 	}
 	return nil
 }
 
-type Forward struct {
+type PeerIDs struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The microseconds' version of TimestampNs, used by TimescaleDB
-	Time int64 `protobuf:"varint,1,opt,name=time,proto3" json:"time,omitempty"`
-	// The number of nanoseconds elapsed since January 1, 1970 UTC when this
-	// circuit was completed.
-	TimeNs int64 `protobuf:"varint,2,opt,name=time_ns,json=timeNs,proto3" json:"time_ns,omitempty"`
-	// The incoming channel ID that carried the HTLC that created the circuit.
-	ChanIdIn uint64 `protobuf:"varint,3,opt,name=chan_id_in,json=chanIdIn,proto3" json:"chan_id_in,omitempty"`
-	// The outgoing channel ID that carried the preimage that completed the
-	// circuit.
-	ChanIdOut uint64 `protobuf:"varint,4,opt,name=chan_id_out,json=chanIdOut,proto3" json:"chan_id_out,omitempty"`
-	// The total fee (in satoshis) that this payment circuit carried.
-	Fee uint64 `protobuf:"varint,5,opt,name=fee,proto3" json:"fee,omitempty"`
-	// The total amount (in satoshis) of the incoming HTLC that created half
-	// the circuit.
-	AmtIn uint64 `protobuf:"varint,6,opt,name=amt_in,json=amtIn,proto3" json:"amt_in,omitempty"`
-	// The total amount (in satoshis) of the outgoing HTLC that created the
-	// second half of the circuit.
-	AmtOut uint64 `protobuf:"varint,7,opt,name=amt_out,json=amtOut,proto3" json:"amt_out,omitempty"`
+	// A list of public kees belonging to peers you have channels with
+	PubKeys []string `protobuf:"bytes,1,rep,name=pub_keys,json=pubKeys,proto3" json:"pub_keys,omitempty"`
 }
 
-func (x *Forward) Reset() {
-	*x = Forward{}
+func (x *PeerIDs) Reset() {
+	*x = PeerIDs{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_torq_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -410,13 +473,13 @@ func (x *Forward) Reset() {
 	}
 }
 
-func (x *Forward) String() string {
+func (x *PeerIDs) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Forward) ProtoMessage() {}
+func (*PeerIDs) ProtoMessage() {}
 
-func (x *Forward) ProtoReflect() protoreflect.Message {
+func (x *PeerIDs) ProtoReflect() protoreflect.Message {
 	mi := &file_torq_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -428,68 +491,29 @@ func (x *Forward) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Forward.ProtoReflect.Descriptor instead.
-func (*Forward) Descriptor() ([]byte, []int) {
+// Deprecated: Use PeerIDs.ProtoReflect.Descriptor instead.
+func (*PeerIDs) Descriptor() ([]byte, []int) {
 	return file_torq_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *Forward) GetTime() int64 {
+func (x *PeerIDs) GetPubKeys() []string {
 	if x != nil {
-		return x.Time
+		return x.PubKeys
 	}
-	return 0
+	return nil
 }
 
-func (x *Forward) GetTimeNs() int64 {
-	if x != nil {
-		return x.TimeNs
-	}
-	return 0
-}
-
-func (x *Forward) GetChanIdIn() uint64 {
-	if x != nil {
-		return x.ChanIdIn
-	}
-	return 0
-}
-
-func (x *Forward) GetChanIdOut() uint64 {
-	if x != nil {
-		return x.ChanIdOut
-	}
-	return 0
-}
-
-func (x *Forward) GetFee() uint64 {
-	if x != nil {
-		return x.Fee
-	}
-	return 0
-}
-
-func (x *Forward) GetAmtIn() uint64 {
-	if x != nil {
-		return x.AmtIn
-	}
-	return 0
-}
-
-func (x *Forward) GetAmtOut() uint64 {
-	if x != nil {
-		return x.AmtOut
-	}
-	return 0
-}
-
-type ForwardsRequest struct {
+type TagIDs struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	// A list of tag ids
+	TagIds []string `protobuf:"bytes,1,rep,name=tag_ids,json=tagIds,proto3" json:"tag_ids,omitempty"`
 }
 
-func (x *ForwardsRequest) Reset() {
-	*x = ForwardsRequest{}
+func (x *TagIDs) Reset() {
+	*x = TagIDs{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_torq_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -497,13 +521,13 @@ func (x *ForwardsRequest) Reset() {
 	}
 }
 
-func (x *ForwardsRequest) String() string {
+func (x *TagIDs) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ForwardsRequest) ProtoMessage() {}
+func (*TagIDs) ProtoMessage() {}
 
-func (x *ForwardsRequest) ProtoReflect() protoreflect.Message {
+func (x *TagIDs) ProtoReflect() protoreflect.Message {
 	mi := &file_torq_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -515,84 +539,173 @@ func (x *ForwardsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ForwardsRequest.ProtoReflect.Descriptor instead.
-func (*ForwardsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use TagIDs.ProtoReflect.Descriptor instead.
+func (*TagIDs) Descriptor() ([]byte, []int) {
 	return file_torq_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TagIDs) GetTagIds() []string {
+	if x != nil {
+		return x.TagIds
+	}
+	return nil
+}
+
+type ChanInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The channel ID
+	ChanId uint64 `protobuf:"varint,1,opt,name=chan_id,json=chanId,proto3" json:"chan_id,omitempty"`
+	// Alias of remote peer
+	Alias string `protobuf:"bytes,2,opt,name=alias,proto3" json:"alias,omitempty"`
+	// The remote public key
+	PubKey string `protobuf:"bytes,3,opt,name=pub_key,json=pubKey,proto3" json:"pub_key,omitempty"`
+	// A list of tags associated with this channel
+	Tags []string `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
+}
+
+func (x *ChanInfo) Reset() {
+	*x = ChanInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_torq_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ChanInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChanInfo) ProtoMessage() {}
+
+func (x *ChanInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_torq_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChanInfo.ProtoReflect.Descriptor instead.
+func (*ChanInfo) Descriptor() ([]byte, []int) {
+	return file_torq_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ChanInfo) GetChanId() uint64 {
+	if x != nil {
+		return x.ChanId
+	}
+	return 0
+}
+
+func (x *ChanInfo) GetAlias() string {
+	if x != nil {
+		return x.Alias
+	}
+	return ""
+}
+
+func (x *ChanInfo) GetPubKey() string {
+	if x != nil {
+		return x.PubKey
+	}
+	return ""
+}
+
+func (x *ChanInfo) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 var File_torq_proto protoreflect.FileDescriptor
 
 var file_torq_proto_rawDesc = []byte{
 	0x0a, 0x0a, 0x74, 0x6f, 0x72, 0x71, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x07, 0x74, 0x6f,
-	0x72, 0x71, 0x72, 0x70, 0x63, 0x22, 0x69, 0x0a, 0x12, 0x43, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c,
-	0x46, 0x6c, 0x6f, 0x77, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x66,
-	0x72, 0x6f, 0x6d, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08,
-	0x66, 0x72, 0x6f, 0x6d, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x6f, 0x5f, 0x74,
-	0x69, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x74, 0x6f, 0x54, 0x69, 0x6d,
-	0x65, 0x12, 0x1d, 0x0a, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x03, 0x20,
-	0x03, 0x28, 0x04, 0x42, 0x02, 0x30, 0x01, 0x52, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x49, 0x64, 0x73,
-	0x22, 0xfa, 0x01, 0x0a, 0x0b, 0x43, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x46, 0x6c, 0x6f, 0x77,
-	0x12, 0x1d, 0x0a, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03,
-	0x28, 0x04, 0x42, 0x02, 0x30, 0x01, 0x52, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x49, 0x64, 0x73, 0x12,
-	0x1b, 0x0a, 0x09, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x03, 0x52, 0x08, 0x66, 0x72, 0x6f, 0x6d, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x17, 0x0a, 0x07,
-	0x74, 0x6f, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x74,
-	0x6f, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x15, 0x0a, 0x06, 0x66, 0x65, 0x65, 0x5f, 0x69, 0x6e, 0x18,
-	0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x66, 0x65, 0x65, 0x49, 0x6e, 0x12, 0x17, 0x0a, 0x07,
-	0x66, 0x65, 0x65, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x66,
-	0x65, 0x65, 0x4f, 0x75, 0x74, 0x12, 0x15, 0x0a, 0x06, 0x61, 0x6d, 0x74, 0x5f, 0x69, 0x6e, 0x18,
-	0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x61, 0x6d, 0x74, 0x49, 0x6e, 0x12, 0x17, 0x0a, 0x07,
-	0x61, 0x6d, 0x74, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x61,
-	0x6d, 0x74, 0x4f, 0x75, 0x74, 0x12, 0x19, 0x0a, 0x08, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x69,
-	0x6e, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e,
-	0x12, 0x1b, 0x0a, 0x09, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x09, 0x20,
-	0x01, 0x28, 0x03, 0x52, 0x08, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x75, 0x74, 0x22, 0x8a, 0x02,
-	0x0a, 0x12, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77,
-	0x61, 0x72, 0x64, 0x73, 0x12, 0x1b, 0x0a, 0x09, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x74, 0x69, 0x6d,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x66, 0x72, 0x6f, 0x6d, 0x54, 0x69, 0x6d,
-	0x65, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x6f, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x03, 0x52, 0x06, 0x74, 0x6f, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x20, 0x0a, 0x0a, 0x63, 0x68,
-	0x61, 0x6e, 0x5f, 0x69, 0x64, 0x5f, 0x69, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x42, 0x02,
-	0x30, 0x01, 0x52, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x49, 0x64, 0x49, 0x6e, 0x12, 0x22, 0x0a, 0x0b,
-	0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x04, 0x42, 0x02, 0x30, 0x01, 0x52, 0x09, 0x63, 0x68, 0x61, 0x6e, 0x49, 0x64, 0x4f, 0x75, 0x74,
-	0x12, 0x10, 0x0a, 0x03, 0x66, 0x65, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52, 0x03, 0x66,
-	0x65, 0x65, 0x12, 0x15, 0x0a, 0x06, 0x61, 0x6d, 0x74, 0x5f, 0x69, 0x6e, 0x18, 0x06, 0x20, 0x01,
-	0x28, 0x04, 0x52, 0x05, 0x61, 0x6d, 0x74, 0x49, 0x6e, 0x12, 0x17, 0x0a, 0x07, 0x61, 0x6d, 0x74,
-	0x5f, 0x6f, 0x75, 0x74, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x61, 0x6d, 0x74, 0x4f,
-	0x75, 0x74, 0x12, 0x19, 0x0a, 0x08, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x69, 0x6e, 0x18, 0x08,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e, 0x12, 0x1b, 0x0a,
-	0x09, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03,
-	0x52, 0x08, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x75, 0x74, 0x22, 0x38, 0x0a, 0x08, 0x46, 0x6f,
-	0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x12, 0x2c, 0x0a, 0x08, 0x66, 0x6f, 0x72, 0x77, 0x61, 0x72,
-	0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72,
-	0x70, 0x63, 0x2e, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x52, 0x08, 0x66, 0x6f, 0x72, 0x77,
-	0x61, 0x72, 0x64, 0x73, 0x22, 0xc2, 0x01, 0x0a, 0x07, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64,
-	0x12, 0x12, 0x0a, 0x04, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04,
-	0x74, 0x69, 0x6d, 0x65, 0x12, 0x1b, 0x0a, 0x07, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x6e, 0x73, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x03, 0x42, 0x02, 0x30, 0x01, 0x52, 0x06, 0x74, 0x69, 0x6d, 0x65, 0x4e,
-	0x73, 0x12, 0x20, 0x0a, 0x0a, 0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x5f, 0x69, 0x6e, 0x18,
-	0x03, 0x20, 0x01, 0x28, 0x04, 0x42, 0x02, 0x30, 0x01, 0x52, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x49,
-	0x64, 0x49, 0x6e, 0x12, 0x22, 0x0a, 0x0b, 0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x5f, 0x6f,
-	0x75, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x42, 0x02, 0x30, 0x01, 0x52, 0x09, 0x63, 0x68,
-	0x61, 0x6e, 0x49, 0x64, 0x4f, 0x75, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x66, 0x65, 0x65, 0x18, 0x05,
-	0x20, 0x01, 0x28, 0x04, 0x52, 0x03, 0x66, 0x65, 0x65, 0x12, 0x15, 0x0a, 0x06, 0x61, 0x6d, 0x74,
-	0x5f, 0x69, 0x6e, 0x18, 0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x61, 0x6d, 0x74, 0x49, 0x6e,
-	0x12, 0x17, 0x0a, 0x07, 0x61, 0x6d, 0x74, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x07, 0x20, 0x01, 0x28,
-	0x04, 0x52, 0x06, 0x61, 0x6d, 0x74, 0x4f, 0x75, 0x74, 0x22, 0x11, 0x0a, 0x0f, 0x46, 0x6f, 0x72,
-	0x77, 0x61, 0x72, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x32, 0x8a, 0x01, 0x0a,
-	0x07, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x12, 0x3a, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x46,
-	0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x12, 0x18, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70,
-	0x63, 0x2e, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x11, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x46, 0x6f, 0x72, 0x77,
-	0x61, 0x72, 0x64, 0x73, 0x12, 0x43, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x43, 0x68, 0x61, 0x6e, 0x6e,
-	0x65, 0x6c, 0x46, 0x6c, 0x6f, 0x77, 0x12, 0x1b, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63,
-	0x2e, 0x43, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x46, 0x6c, 0x6f, 0x77, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x68,
-	0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x46, 0x6c, 0x6f, 0x77, 0x42, 0x23, 0x5a, 0x21, 0x67, 0x69, 0x74,
-	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6c, 0x6e, 0x63, 0x61, 0x70, 0x69, 0x74, 0x61,
-	0x6c, 0x2f, 0x74, 0x6f, 0x72, 0x71, 0x2f, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x72, 0x71, 0x72, 0x70, 0x63, 0x22, 0xe3, 0x01, 0x0a, 0x19, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67,
+	0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x74, 0x73, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x66, 0x72, 0x6f, 0x6d, 0x54, 0x73, 0x12, 0x13, 0x0a, 0x05,
+	0x74, 0x6f, 0x5f, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x74, 0x6f, 0x54,
+	0x73, 0x12, 0x36, 0x0a, 0x0b, 0x63, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x5f, 0x69, 0x64, 0x73,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63,
+	0x2e, 0x43, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x49, 0x44, 0x73, 0x48, 0x00, 0x52, 0x0a, 0x63,
+	0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x49, 0x64, 0x73, 0x12, 0x2d, 0x0a, 0x08, 0x70, 0x65, 0x65,
+	0x72, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x6f,
+	0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x50, 0x65, 0x65, 0x72, 0x49, 0x44, 0x73, 0x48, 0x00, 0x52,
+	0x07, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x73, 0x12, 0x2a, 0x0a, 0x07, 0x74, 0x61, 0x67, 0x5f,
+	0x69, 0x64, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x74, 0x6f, 0x72, 0x71,
+	0x72, 0x70, 0x63, 0x2e, 0x54, 0x61, 0x67, 0x49, 0x44, 0x73, 0x48, 0x00, 0x52, 0x06, 0x74, 0x61,
+	0x67, 0x49, 0x64, 0x73, 0x42, 0x05, 0x0a, 0x03, 0x69, 0x64, 0x73, 0x22, 0xcb, 0x01, 0x0a, 0x1a,
+	0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72,
+	0x64, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x17, 0x0a, 0x07, 0x66, 0x72,
+	0x6f, 0x6d, 0x5f, 0x74, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x66, 0x72, 0x6f,
+	0x6d, 0x54, 0x73, 0x12, 0x13, 0x0a, 0x05, 0x74, 0x6f, 0x5f, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x04, 0x74, 0x6f, 0x54, 0x73, 0x12, 0x31, 0x0a, 0x0a, 0x67, 0x72, 0x6f, 0x75,
+	0x70, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x12, 0x2e, 0x74,
+	0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x54, 0x79, 0x70, 0x65,
+	0x52, 0x09, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x54, 0x79, 0x70, 0x65, 0x12, 0x4c, 0x0a, 0x13, 0x61,
+	0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x66, 0x6f, 0x72, 0x77, 0x61, 0x72,
+	0x64, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72,
+	0x70, 0x63, 0x2e, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72,
+	0x77, 0x61, 0x72, 0x64, 0x73, 0x52, 0x12, 0x61, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65,
+	0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x22, 0xd4, 0x02, 0x0a, 0x12, 0x41, 0x67,
+	0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73,
+	0x12, 0x2d, 0x0a, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x73, 0x18, 0x01, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x11, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x68, 0x61,
+	0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x73, 0x12,
+	0x31, 0x0a, 0x0a, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x12, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x47, 0x72,
+	0x6f, 0x75, 0x70, 0x54, 0x79, 0x70, 0x65, 0x52, 0x09, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x5f, 0x69, 0x64, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12, 0x1d, 0x0a,
+	0x0a, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x09, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1d, 0x0a, 0x0a,
+	0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x04,
+	0x52, 0x09, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x4f, 0x75, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x61,
+	0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x69, 0x6e, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x08,
+	0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e, 0x12, 0x17, 0x0a, 0x07, 0x66, 0x65, 0x65, 0x5f,
+	0x6f, 0x75, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x66, 0x65, 0x65, 0x4f, 0x75,
+	0x74, 0x12, 0x15, 0x0a, 0x06, 0x66, 0x65, 0x65, 0x5f, 0x69, 0x6e, 0x18, 0x09, 0x20, 0x01, 0x28,
+	0x04, 0x52, 0x05, 0x66, 0x65, 0x65, 0x49, 0x6e, 0x12, 0x1b, 0x0a, 0x09, 0x63, 0x6f, 0x75, 0x6e,
+	0x74, 0x5f, 0x6f, 0x75, 0x74, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x04, 0x52, 0x08, 0x63, 0x6f, 0x75,
+	0x6e, 0x74, 0x4f, 0x75, 0x74, 0x12, 0x19, 0x0a, 0x08, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x69,
+	0x6e, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x49, 0x6e,
+	0x22, 0x2b, 0x0a, 0x0a, 0x43, 0x68, 0x61, 0x6e, 0x6e, 0x65, 0x6c, 0x49, 0x44, 0x73, 0x12, 0x1d,
+	0x0a, 0x08, 0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x04,
+	0x42, 0x02, 0x30, 0x01, 0x52, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x49, 0x64, 0x73, 0x22, 0x24, 0x0a,
+	0x07, 0x50, 0x65, 0x65, 0x72, 0x49, 0x44, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x70, 0x75, 0x62, 0x5f,
+	0x6b, 0x65, 0x79, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x70, 0x75, 0x62, 0x4b,
+	0x65, 0x79, 0x73, 0x22, 0x21, 0x0a, 0x06, 0x54, 0x61, 0x67, 0x49, 0x44, 0x73, 0x12, 0x17, 0x0a,
+	0x07, 0x74, 0x61, 0x67, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06,
+	0x74, 0x61, 0x67, 0x49, 0x64, 0x73, 0x22, 0x66, 0x0a, 0x08, 0x43, 0x68, 0x61, 0x6e, 0x49, 0x6e,
+	0x66, 0x6f, 0x12, 0x17, 0x0a, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x04, 0x52, 0x06, 0x63, 0x68, 0x61, 0x6e, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x61,
+	0x6c, 0x69, 0x61, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x61, 0x6c, 0x69, 0x61,
+	0x73, 0x12, 0x17, 0x0a, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x61,
+	0x67, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x74, 0x61, 0x67, 0x73, 0x2a, 0x2b,
+	0x0a, 0x09, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x54, 0x79, 0x70, 0x65, 0x12, 0x0b, 0x0a, 0x07, 0x43,
+	0x48, 0x41, 0x4e, 0x4e, 0x45, 0x4c, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x50, 0x45, 0x45, 0x52,
+	0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x54, 0x41, 0x47, 0x10, 0x02, 0x32, 0x6b, 0x0a, 0x07, 0x74,
+	0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x12, 0x60, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x41, 0x67, 0x67,
+	0x72, 0x69, 0x67, 0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x12,
+	0x22, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67,
+	0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x2e, 0x41, 0x67,
+	0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x65, 0x64, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x73,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x23, 0x5a, 0x21, 0x67, 0x69, 0x74, 0x68,
+	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6c, 0x6e, 0x63, 0x61, 0x70, 0x69, 0x74, 0x61, 0x6c,
+	0x2f, 0x74, 0x6f, 0x72, 0x71, 0x2f, 0x74, 0x6f, 0x72, 0x71, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -607,26 +720,33 @@ func file_torq_proto_rawDescGZIP() []byte {
 	return file_torq_proto_rawDescData
 }
 
-var file_torq_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_torq_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_torq_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_torq_proto_goTypes = []interface{}{
-	(*ChannelFlowRequest)(nil), // 0: torqrpc.ChannelFlowRequest
-	(*ChannelFlow)(nil),        // 1: torqrpc.ChannelFlow
-	(*AggregatedForwards)(nil), // 2: torqrpc.AggregatedForwards
-	(*Forwards)(nil),           // 3: torqrpc.Forwards
-	(*Forward)(nil),            // 4: torqrpc.Forward
-	(*ForwardsRequest)(nil),    // 5: torqrpc.ForwardsRequest
+	(GroupType)(0),                     // 0: torqrpc.GroupType
+	(*AggregatedForwardsRequest)(nil),  // 1: torqrpc.AggregatedForwardsRequest
+	(*AggregatedForwardsResponse)(nil), // 2: torqrpc.AggregatedForwardsResponse
+	(*AggregatedForwards)(nil),         // 3: torqrpc.AggregatedForwards
+	(*ChannelIDs)(nil),                 // 4: torqrpc.ChannelIDs
+	(*PeerIDs)(nil),                    // 5: torqrpc.PeerIDs
+	(*TagIDs)(nil),                     // 6: torqrpc.TagIDs
+	(*ChanInfo)(nil),                   // 7: torqrpc.ChanInfo
 }
 var file_torq_proto_depIdxs = []int32{
-	4, // 0: torqrpc.Forwards.forwards:type_name -> torqrpc.Forward
-	5, // 1: torqrpc.torqrpc.GetForwards:input_type -> torqrpc.ForwardsRequest
-	0, // 2: torqrpc.torqrpc.GetChannelFlow:input_type -> torqrpc.ChannelFlowRequest
-	3, // 3: torqrpc.torqrpc.GetForwards:output_type -> torqrpc.Forwards
-	1, // 4: torqrpc.torqrpc.GetChannelFlow:output_type -> torqrpc.ChannelFlow
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: torqrpc.AggregatedForwardsRequest.channel_ids:type_name -> torqrpc.ChannelIDs
+	5, // 1: torqrpc.AggregatedForwardsRequest.peer_ids:type_name -> torqrpc.PeerIDs
+	6, // 2: torqrpc.AggregatedForwardsRequest.tag_ids:type_name -> torqrpc.TagIDs
+	0, // 3: torqrpc.AggregatedForwardsResponse.group_type:type_name -> torqrpc.GroupType
+	3, // 4: torqrpc.AggregatedForwardsResponse.aggregated_forwards:type_name -> torqrpc.AggregatedForwards
+	7, // 5: torqrpc.AggregatedForwards.channels:type_name -> torqrpc.ChanInfo
+	0, // 6: torqrpc.AggregatedForwards.group_type:type_name -> torqrpc.GroupType
+	1, // 7: torqrpc.torqrpc.GetAggrigatedForwards:input_type -> torqrpc.AggregatedForwardsRequest
+	2, // 8: torqrpc.torqrpc.GetAggrigatedForwards:output_type -> torqrpc.AggregatedForwardsResponse
+	8, // [8:9] is the sub-list for method output_type
+	7, // [7:8] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_torq_proto_init() }
@@ -636,7 +756,7 @@ func file_torq_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_torq_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ChannelFlowRequest); i {
+			switch v := v.(*AggregatedForwardsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -648,7 +768,7 @@ func file_torq_proto_init() {
 			}
 		}
 		file_torq_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ChannelFlow); i {
+			switch v := v.(*AggregatedForwardsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -672,7 +792,7 @@ func file_torq_proto_init() {
 			}
 		}
 		file_torq_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Forwards); i {
+			switch v := v.(*ChannelIDs); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -684,7 +804,7 @@ func file_torq_proto_init() {
 			}
 		}
 		file_torq_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Forward); i {
+			switch v := v.(*PeerIDs); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -696,7 +816,19 @@ func file_torq_proto_init() {
 			}
 		}
 		file_torq_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ForwardsRequest); i {
+			switch v := v.(*TagIDs); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_torq_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ChanInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -708,18 +840,24 @@ func file_torq_proto_init() {
 			}
 		}
 	}
+	file_torq_proto_msgTypes[0].OneofWrappers = []interface{}{
+		(*AggregatedForwardsRequest_ChannelIds)(nil),
+		(*AggregatedForwardsRequest_PeerIds)(nil),
+		(*AggregatedForwardsRequest_TagIds)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_torq_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   6,
+			NumEnums:      1,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_torq_proto_goTypes,
 		DependencyIndexes: file_torq_proto_depIdxs,
+		EnumInfos:         file_torq_proto_enumTypes,
 		MessageInfos:      file_torq_proto_msgTypes,
 	}.Build()
 	File_torq_proto = out.File
@@ -740,8 +878,7 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type TorqrpcClient interface {
-	GetForwards(ctx context.Context, in *ForwardsRequest, opts ...grpc.CallOption) (*Forwards, error)
-	GetChannelFlow(ctx context.Context, in *ChannelFlowRequest, opts ...grpc.CallOption) (*ChannelFlow, error)
+	GetAggrigatedForwards(ctx context.Context, in *AggregatedForwardsRequest, opts ...grpc.CallOption) (*AggregatedForwardsResponse, error)
 }
 
 type torqrpcClient struct {
@@ -752,18 +889,9 @@ func NewTorqrpcClient(cc grpc.ClientConnInterface) TorqrpcClient {
 	return &torqrpcClient{cc}
 }
 
-func (c *torqrpcClient) GetForwards(ctx context.Context, in *ForwardsRequest, opts ...grpc.CallOption) (*Forwards, error) {
-	out := new(Forwards)
-	err := c.cc.Invoke(ctx, "/torqrpc.torqrpc/GetForwards", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *torqrpcClient) GetChannelFlow(ctx context.Context, in *ChannelFlowRequest, opts ...grpc.CallOption) (*ChannelFlow, error) {
-	out := new(ChannelFlow)
-	err := c.cc.Invoke(ctx, "/torqrpc.torqrpc/GetChannelFlow", in, out, opts...)
+func (c *torqrpcClient) GetAggrigatedForwards(ctx context.Context, in *AggregatedForwardsRequest, opts ...grpc.CallOption) (*AggregatedForwardsResponse, error) {
+	out := new(AggregatedForwardsResponse)
+	err := c.cc.Invoke(ctx, "/torqrpc.torqrpc/GetAggrigatedForwards", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -772,57 +900,35 @@ func (c *torqrpcClient) GetChannelFlow(ctx context.Context, in *ChannelFlowReque
 
 // TorqrpcServer is the server API for Torqrpc service.
 type TorqrpcServer interface {
-	GetForwards(context.Context, *ForwardsRequest) (*Forwards, error)
-	GetChannelFlow(context.Context, *ChannelFlowRequest) (*ChannelFlow, error)
+	GetAggrigatedForwards(context.Context, *AggregatedForwardsRequest) (*AggregatedForwardsResponse, error)
 }
 
 // UnimplementedTorqrpcServer can be embedded to have forward compatible implementations.
 type UnimplementedTorqrpcServer struct {
 }
 
-func (*UnimplementedTorqrpcServer) GetForwards(context.Context, *ForwardsRequest) (*Forwards, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetForwards not implemented")
-}
-func (*UnimplementedTorqrpcServer) GetChannelFlow(context.Context, *ChannelFlowRequest) (*ChannelFlow, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetChannelFlow not implemented")
+func (*UnimplementedTorqrpcServer) GetAggrigatedForwards(context.Context, *AggregatedForwardsRequest) (*AggregatedForwardsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAggrigatedForwards not implemented")
 }
 
 func RegisterTorqrpcServer(s *grpc.Server, srv TorqrpcServer) {
 	s.RegisterService(&_Torqrpc_serviceDesc, srv)
 }
 
-func _Torqrpc_GetForwards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ForwardsRequest)
+func _Torqrpc_GetAggrigatedForwards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AggregatedForwardsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TorqrpcServer).GetForwards(ctx, in)
+		return srv.(TorqrpcServer).GetAggrigatedForwards(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/torqrpc.torqrpc/GetForwards",
+		FullMethod: "/torqrpc.torqrpc/GetAggrigatedForwards",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TorqrpcServer).GetForwards(ctx, req.(*ForwardsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Torqrpc_GetChannelFlow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChannelFlowRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TorqrpcServer).GetChannelFlow(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/torqrpc.torqrpc/GetChannelFlow",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TorqrpcServer).GetChannelFlow(ctx, req.(*ChannelFlowRequest))
+		return srv.(TorqrpcServer).GetAggrigatedForwards(ctx, req.(*AggregatedForwardsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -832,12 +938,8 @@ var _Torqrpc_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*TorqrpcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetForwards",
-			Handler:    _Torqrpc_GetForwards_Handler,
-		},
-		{
-			MethodName: "GetChannelFlow",
-			Handler:    _Torqrpc_GetChannelFlow_Handler,
+			MethodName: "GetAggrigatedForwards",
+			Handler:    _Torqrpc_GetAggrigatedForwards_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
