@@ -1,0 +1,5 @@
+DROP FUNCTION agg_forwards_by_chan_id(
+    start_time timestamp,
+    end_time timestamp,
+    chan_ids numeric[]
+);

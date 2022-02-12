@@ -5,114 +5,125 @@ option go_package = "github.com/lncapital/torq/torqrpc";
 package torqrpc;
 
 service torqrpc {
-  rpc GetForwards (ForwardsRequest) returns (Forwards);
-  rpc GetChannelFlow (ChannelFlowRequest) returns (ChannelFlow);
+  rpc GetAggrigatedForwards (AggregatedForwardsRequest) returns (AggregatedForwardsResponse);
 }
 
-message ChannelFlowRequest {
-    // From what date/time (unix timestamp)
-  int64 from_time = 1;
 
-  // To what date/time (unix timestamp)
-  int64 to_time = 2;
-
-  // TODO: Add "repeated" here to request multiple channels at once.
-  repeated uint64 chan_ids = 3 [jstype = JS_STRING];
-}
-
-message ChannelFlow {
-
-  // What channel ID's the flow is for
-  repeated uint64 chan_ids = 1  [jstype = JS_STRING];
+// ------------------------------------------------------------------
+// Aggregated forwards
+// ------------------------------------------------------------------
+message AggregatedForwardsRequest {
 
   // From what date/time (unix timestamp)
-  int64 from_time = 2;
+  int64 from_ts = 1;
 
   // To what date/time (unix timestamp)
-  int64 to_time =3;
+  int64 to_ts = 2;
 
-  // Fees earned by other channels using this channels inbound liquidity.
-  uint64 fee_in = 4;
-
-  // Fees earned by this channels outbound liquidity
-  uint64 fee_out = 5;
-
-  // Amount inbound
-  uint64 amt_in = 6;
-
-  // Amount outbound
-  uint64 amt_out = 7;
-
-  // Number of forwards inbound
-  int64 count_in = 8;
-
-  // Number of forwards outbound
-  int64 count_out = 9;
-
-  // TODO: Consider adding balance at start and finish of time interval
+  oneof ids {
+    ChannelIDs channel_ids = 3;
+    PeerIDs peer_ids = 4;
+    TagIDs tag_ids = 5;
+  }
 }
 
+message AggregatedForwardsResponse {
+
+  // From what date/time (unix timestamp)
+  int64 from_ts = 1;
+
+  // To what date/time (unix timestamp)
+  int64 to_ts = 2;
+
+  // This represents the type of aggregation
+  // 0 = CHANNEL, means forwards are aggregated per channel
+  // 1 = PEER, means forwards are aggregated per peer (remote public key)
+  // 1 = TAG, means forwards are aggregated per tag, tags are a user defined group of channels.
+  GroupType group_type = 3;
+
+  // a list of aggregated forwarding stats
+  repeated AggregatedForwards aggregated_forwards = 4;
+}
+
+// AggregatedForwards represents a channels, peers or tags aggregated forwarding stats.
 message AggregatedForwards {
 
+  // A list of the channel included in the aggregated result.
+  repeated ChanInfo channels = 1;
 
-	int64 from_time = 1;
+  // This represents the type of aggregation
+  // 0 = CHANNEL, means forwards are aggregated per channel
+  // 1 = PEER, means forwards are aggregated per peer (remote public key)
+  // 1 = TAG, means forwards are aggregated per tag, tags are a user defined group of channels.
+  GroupType group_type = 2;
 
-  int64 to_time =2;
+  // The group_id depends on the granularity requested.
+  //   * Channel ID for individual channels
+  //   * Remote peers public key when it's grouped per peer
+  //   * Tag id when it's grouped by tag.
+  string group_id = 4;
 
-  // The incoming channel ID that carried the HTLC that created the circuit.
-  uint64 chan_id_in = 3 [jstype = JS_STRING];
+  // The group_name depends on the granularity requested.
+  //   * Individual channels use the format: <Alias> (<Channel ID>)
+  //   * Peer grouped use the format: <Alias>
+  //   * Tag groups use the format: <Tag Name>
+  string group_name = 5;
 
-  // The outgoing channel ID that carried the preimage that completed the
-  // circuit.
-  uint64 chan_id_out = 4 [jstype = JS_STRING];
+  // The  outbound amount in sats (Satoshis)
+  uint64 amount_out = 6;
 
-  // The total fee (in satoshis) that this payment circuit carried.
-  uint64 fee = 5;
+  // The inbound amount in sats (Satoshis)
+  uint64 amount_in = 7;
 
-  // The total amount (in satoshis) of the incoming HTLC that created half
-  // the circuit.
-  uint64 amt_in = 6;
+  // The outbound fee in sats. This is what the channel has directly produced.
+  uint64 fee_out = 8;
 
-  // The total amount (in satoshis) of the outgoing HTLC that created the
-  // second half of the circuit.
-  uint64 amt_out = 7;
+  // The inbound fee in sats. This is what the channel has indirectly produced.
+  // These fees are not really earned by this channel/peer/group, but represents
+  // the channel/peer/group contribution to fees earned by other channels.
+  uint64 fee_in = 9;
 
-  int64 count_in = 8;
+  // Number of outbound forwards.
+  uint64 count_out = 10;
 
-  int64 count_out = 9;
+  // Number of inbound forwards.
+  uint64 count_in = 11;
+
+}
+
+message ChannelIDs {
+  // A list of channel IDs
+  repeated uint64 chan_ids = 1 [jstype = JS_STRING];
+}
+
+message PeerIDs {
+  // A list of public kees belonging to peers you have channels with
+  repeated string pub_keys = 1;
+}
+
+message TagIDs {
+  // A list of tag ids
+  repeated string tag_ids = 1;
 }
 
 
-message Forwards {
-  repeated Forward forwards = 1;
+message ChanInfo {
+
+  // The channel ID
+  uint64 chan_id = 1;
+
+  // Alias of remote peer
+  string alias = 2;
+
+  // The remote public key
+  string pub_key = 3;
+
+  // A list of tags associated with this channel
+  repeated string tags = 4;
 }
 
-message Forward {
-
-  // The microseconds' version of TimestampNs, used by TimescaleDB
-	int64 time = 1;
-
-  // The number of nanoseconds elapsed since January 1, 1970 UTC when this
-  // circuit was completed.
-  int64 time_ns =2 [jstype = JS_STRING];
-
-  // The incoming channel ID that carried the HTLC that created the circuit.
-  uint64 chan_id_in = 3 [jstype = JS_STRING];
-
-  // The outgoing channel ID that carried the preimage that completed the
-  // circuit.
-  uint64 chan_id_out = 4 [jstype = JS_STRING];
-
-  // The total fee (in satoshis) that this payment circuit carried.
-  uint64 fee = 5;
-
-  // The total amount (in satoshis) of the incoming HTLC that created half
-  // the circuit.
-  uint64 amt_in = 6;
-
-  // The total amount (in satoshis) of the outgoing HTLC that created the
-  // second half of the circuit.
-  uint64 amt_out = 7;
+enum GroupType {
+    CHANNEL = 0;
+    PEER = 1;
+    TAG = 2;
 }
-
-message ForwardsRequest{}

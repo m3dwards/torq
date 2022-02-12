@@ -7,6 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/lncapital/torq/build"
 	"github.com/lncapital/torq/cmd/torq/internal/subscribe"
+	"github.com/lncapital/torq/cmd/torq/internal/torqsrv"
 	"github.com/lncapital/torq/migrations"
 	"github.com/lncapital/torq/pkg/database"
 	"github.com/lncapital/torq/pkg/lndutil"
@@ -174,33 +175,85 @@ func main() {
 				return nil
 			})
 
-			//srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
-			//	c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
+			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
+				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
 
-			//// Starts the grpc server
-			//errs.Go(func() error {
-			//	err := srv.StartGrpc()
-			//	if err != nil {
-			//		return err
-			//	}
-			//	return nil
-			//})
-			//
-			//// Starts the grpc-web proxy server
-			//errs.Go(func() error {
-			//	err := srv.StartWeb()
-			//	if err != nil {
-			//		return err
-			//	}
-			//	return nil
-			//})
+			// Starts the grpc server
+			errs.Go(func() error {
+				err := srv.StartGrpc()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 
-			//err = errs.Wait()
-			//if err != nil {
-			//	fmt.Printf("trying to exit")
-			//	srv.Srv.Stop()
-			//	return err
-			//}
+			// Starts the grpc-web proxy server
+			errs.Go(func() error {
+				err := srv.StartWeb()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+
+			return errs.Wait()
+		},
+	}
+
+	startGrpc := &cli.Command{
+		Name:  "start_grpc",
+		Usage: "",
+		Action: func(c *cli.Context) error {
+			fmt.Println("Starting Torq gRPC server only")
+
+			fmt.Println("Connecting to the Torq database")
+			db, err := database.PgConnect(c.String("db.name"), c.String("db.user"),
+				c.String("db.password"), c.String("db.host"), c.String("db.port"))
+			if err != nil {
+				return fmt.Errorf("(cmd/lnc streamHtlcCommand) error connecting to db: %v", err)
+			}
+
+			defer func() {
+				cerr := db.Close()
+				if err == nil {
+					err = cerr
+				}
+			}()
+
+			fmt.Println("Checking for migrations..")
+			// Check if the database needs to be migrated.
+			err = migrations.MigrateUp(db.DB)
+			if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+				return err
+			}
+
+			if err != nil {
+				return fmt.Errorf("failed to connect to lnd: %v", err)
+			}
+
+			ctx := context.Background()
+			errs, ctx := errgroup.WithContext(ctx)
+
+			srv, err := torqsrv.NewServer(c.String("torq.host"), c.String("torq.port"),
+				c.String("torq.web_port"), c.String("torq.cert"), c.String("torq.key"), db)
+
+			// Starts the grpc server
+			errs.Go(func() error {
+				err := srv.StartGrpc()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+
+			// Starts the grpc-web proxy server
+			errs.Go(func() error {
+				err := srv.StartWeb()
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 
 			return errs.Wait()
 		},
@@ -228,10 +281,10 @@ func main() {
 
 			client := torqrpc.NewTorqrpcClient(conn)
 			ctx := context.Background()
-			response, err := client.GetChannelFlow(ctx, &torqrpc.ChannelFlowRequest{
-				FromTime: 0,
-				ToTime:   time.Now().Unix(),
-				ChanIds:  []uint64{779216194111275009},
+			response, err := client.GetAggrigatedForwards(ctx, &torqrpc.AggregatedForwardsRequest{
+				FromTs: time.Date(2022, 02, 01, 0, 0, 0, 0, time.UTC).Unix(),
+				ToTs:   time.Date(2022, 02, 11, 0, 0, 0, 0, time.UTC).Unix(),
+				Ids:    &torqrpc.AggregatedForwardsRequest_ChannelIds{},
 			})
 			if err != nil {
 				return err
@@ -300,6 +353,7 @@ func main() {
 
 	app.Commands = cli.Commands{
 		start,
+		startGrpc,
 		callGrpc,
 		migrateUp,
 		migrateDown,
