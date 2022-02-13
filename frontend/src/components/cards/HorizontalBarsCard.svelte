@@ -3,30 +3,25 @@
     import Bar from './rows/Bar.svelte';
     import Row from './rows/Row.svelte';
 
-    type ForwardsCardProps = Omit<CardWrapperProps, 'type' | 'heading'> & {
+    type BarCardProps = CardWrapperProps & {
         iValue: number;
         oValue: number;
         totalRow?: boolean;
-        revenueRow?: boolean;
-        revenueValue?: number;
     };
 
-    export let props: ForwardsCardProps;
+    export let props: BarCardProps;
     
     $: props.iValue = Number(props.iValue)
     $: props.oValue = Number(props.oValue)
-    $: totalValue = props.iValue + props.iValue
-    
+    $: totalValue = props.iValue + props.oValue
+
 </script>
 
-<CardWrapper props={{ type: 'forwards-card', heading: 'Forwards' }}>
+<CardWrapper props={{ type: props.type, heading: props.heading }}>
     <Bar oValue={props.oValue} iValue={props.iValue} percent={true} />
 
     {#if props.totalRow}
-        <Row label="Total" value={totalValue} />
+        <Row label="Total" value={totalValue} notation="standard" />
     {/if}
 
-    {#if props.revenueRow}
-        <Row label="Revenue" value={props.revenueValue} />
-    {/if}
 </CardWrapper>

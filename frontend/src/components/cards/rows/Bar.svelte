@@ -16,81 +16,61 @@
 </script>
 
 <div class="bar-row">
-    <div class="bar-heading">
-        <div class="outbound">Outbound</div>
-        <div class="inbound">Inbound </div>
-    </div>
-    <div class="bar">
-        <div class="bar-value" style="width: {oValuePercent}%" />
-    </div>
     <div class="bar-values">
         <div class="outbound">
-            {#if values}
-                <FormatNumber value={oValue} decimals={0} notation="standard" />
-                {postfix}
-            {/if}
-        </div>
-        <div class="inbound">
-            {#if values}
-                <FormatNumber value={iValue} decimals={0} notation="standard" />
-                {postfix}
-            {/if}
+            <FormatNumber value={oValue} decimals={0} notation="standard" />
+            <span class="percent">
+                &ensp;
+                (<FormatNumber value={oValuePercent} decimals={0} />%)
+            </span>
         </div>
     </div>
-    <div class="bar-percent">
-        <span>
-            {#if percent}
-                <span class="percent">
-                    <FormatNumber value={oValuePercent} decimals={0} /> %
-                </span>
-            {/if}
-        </span>
-        <span>
-            {#if percent}
-                <span class="percent">
-                    <FormatNumber value={iValuePercent} decimals={0} /> %
-                </span>
-            {/if}
-        </span>
+    <div class="bars">
+        <div class="bar-value out" style="width: {oValuePercent}%" />
+        <div class="bar-value inn" style="width: {iValuePercent}%" />
+    </div>
+    <div class="bar-values">
+        <div class="inbound">
+            <FormatNumber value={iValue} decimals={0} notation="standard" />
+            <span class="percent">
+                &ensp;
+                (<FormatNumber value={iValuePercent} decimals={0} />%)
+            </span>
+        </div>
     </div>
 </div>
 
 <style>
-    .bar-values,
-    .bar-percent {
+    .bars {
+        margin-bottom: 4px;
+        margin-top: 2px;
+    }
+    .bar-values {
         display: flex;
         justify-content: space-between;
-        padding-top: 10px;
-    }
-    .bar-percent {
-        padding-top: 5px;
-        padding-bottom: 5px;
-    }
-    .bar-heading {
-        display: flex;
-        justify-content: space-between;
-        font-size: 13px;
-        color: rgba(0, 0, 0, 0.35);
-        margin-bottom: 7px;
     }
     .bar-row {
-        padding: 20px 15px 10px;
+        padding: 8px 15px 5.5px;
+        font-size: 14px;
+        align: bottom;
+        line-height: 28px;
+        color: #3A463C;
     }
     .percent {
-        color: rgba(0, 0, 0, 0.35);
-    }
-    .bar {
-        position: relative;
-        background-color: #66786a;
-        width: 100%;
-        height: 5px;
-        border-radius: 5px;
+        color: rgba(58, 70, 60, 0.35);
     }
     .bar-value {
-        background-color: #fa9401;
-        height: 5px;
+        height: 10px;
         width: 0%;
-        border-radius: 2px;
+        min-width: 2px;
+    }
+
+    .bar-value.out {
+        background-color: #66786A;
+        margin-bottom: 2px;
+    }
+    .bar-value.inn {
+        background-color: #C7D1C9;
     }
     /* .bar-text {
         width: 100%;

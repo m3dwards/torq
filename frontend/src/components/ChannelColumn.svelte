@@ -14,6 +14,7 @@
 <style>
     .channel-column {
         min-width: 344px;
+        min-height: calc(100vh - 80px);
     }
 
     .alias {
