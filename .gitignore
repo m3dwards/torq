@@ -25,8 +25,10 @@ torq
 torq.conf
 torq-d*.conf
 
+# Ignore all editor configs
 .vscode
 .idea
+.DS_Store
 
 ## Ignore all certificate files
 *.pem
