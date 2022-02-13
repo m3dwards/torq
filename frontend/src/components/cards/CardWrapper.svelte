@@ -25,20 +25,22 @@
 </div>
 
 <style>
+    .card-wrapper {
+        margin-top: 20px;
+    }
     .card {
         background-color: white;
         border-radius: 5px;
-        margin-bottom: 10px;
     }
     .heading {
         display: flex;
         justify-content: space-between;
-        font-size: 13px;
+        font-size: 14px;
         color: rgba(0, 0, 0, 0.2);
     }
     .heading .value,
     .heading .actions {
-        padding: 5px;
+        line-height: 200%;
     }
     .actions {
         opacity: 0;
