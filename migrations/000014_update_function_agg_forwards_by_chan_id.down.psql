@@ -1,0 +1,77 @@
+CREATE OR REPLACE FUNCTION agg_forwards_by_chan_id(
+    start_time timestamp,
+    end_time timestamp,
+    chan_ids numeric[]
+)
+RETURNS TABLE(
+chan_id numeric,
+alias text,
+amount_in numeric,
+fee_in numeric,
+count_in numeric,
+amount_out numeric,
+fee_out numeric,
+count_out numeric,
+pub_key text ) AS $$
+
+    -- Get the full forwarding table
+select coalesce(i.chan_id, o.chan_id) as chan_id,
+       coalesce(i.alias, o.alias, 'Not found') as alias,
+       coalesce(amount_in, 0) as amount_in,
+       coalesce(fee_in, 0) as fee_in,
+       coalesce(count_in, 0) as count_in,
+       coalesce(amount_out, 0) as amount_out,
+       coalesce(fee_out, 0) as fee_out,
+       coalesce(count_out, 0) as count_out,
+       coalesce(i.pub_key, o.pub_key) as pub_key
+from (
+
+    -- Get all inbound forwards
+    select incoming_channel_id as chan_id,
+           last(ne.alias, ne.timestamp) as alias,
+           floor(sum(incoming_amount_msat/1000)) as amount_in,
+           floor(sum(fee_msat/1000)) as fee_in,
+           count(time_ns) as count_in,
+           ce.pub_key as pub_key
+    from forward fw
+    left join channel_event ce on fw.incoming_channel_id = ce.chan_id
+    left join node_event ne on ce.pub_key = ne.pub_key
+    where
+          -- From time
+          (($1 is null) or fw.time >= $1) and
+
+          -- To time
+          (($2 is null) or fw.time <= $2) and
+
+          -- Filter on channel ids (If given)
+          (($3 is null) or (incoming_channel_id = ANY($3)))
+
+    group by fw.incoming_channel_id, ce.pub_key
+
+) as i
+full outer join (
+
+    -- Get all outbound forwards
+    select outgoing_channel_id as chan_id,
+           last(ne.alias, ne.timestamp) as alias,
+           floor(sum(outgoing_amount_msat/1000)) as amount_out,
+           floor(sum(fee_msat/1000)) as fee_out,
+           count(time_ns) as count_out,
+           ce.pub_key as pub_key
+    from forward fw
+    left join channel_event ce on fw.outgoing_channel_id = ce.chan_id
+    left join node_event ne on ce.pub_key = ne.pub_key
+    where
+          -- From time
+          (($1 is null) or fw.time >= $1) and
+
+          -- To time
+          (($2 is null) or fw.time <= $2) and
+
+          -- Filter on channel ids
+          (($3 is null) or (outgoing_channel_id = ANY($3)))
+
+    group by fw.outgoing_channel_id, ce.pub_key
+
+) as o on o.chan_id = i.chan_id
+$$ LANGUAGE SQL;
