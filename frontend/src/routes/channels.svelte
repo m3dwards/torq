@@ -12,11 +12,12 @@
     });
 
     const client = new torqrpcClientImpl(rpc);
-    let getChannels = async function() {
-        return client.GetChannelFlow({
-            chanIds: [772511372188909569],
-            fromTime: 0,
-            toTime: 1643555040,
+    const day = (60*60*24*1000)
+    let getForwards = async function() {
+        return client.GetAggrigatedForwards({
+            peerIds: {pubKeys: []},
+            fromTs: (Date.now() - (7*day))/1000,
+            toTs: Date.now()/1000,
         })
     }
 	
@@ -27,11 +28,14 @@
 </svelte:head>
 
 <div class="index-page">
-    {#await getChannels()}
-        Waiting for channels
+    {#await getForwards()}
+        <div>Loading forwarding activity</div>
     {:then channels}
-        {console.log(channels)}
-<!--        <ChannelsTable channels={channels} />    -->
+        <ChannelsTable channels={channels} />
     {/await}
     
 </div>
+
+<style>
+
+</style>
